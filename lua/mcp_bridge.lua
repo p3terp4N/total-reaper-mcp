@@ -894,7 +894,123 @@ local function GenerateBackingTrack(chart_json, instruments, style)
         return {ok = false, error = "Generation failed: " .. tostring(result)}
     end
 
+    -- Store chart + style in project extended state for RegeneratePart
+    reaper.SetProjExtState(0, "MCP_BackingTrack", "chart", encode_json(chart))
+    reaper.SetProjExtState(0, "MCP_BackingTrack", "style", style or "rock")
+    reaper.SetProjExtState(0, "MCP_BackingTrack", "instruments", table.concat(instruments, ","))
+
     return {ok = true, ret = result}
+end
+
+-- Regenerate a single instrument part with a different style
+local function RegeneratePart(instrument, style, genre_override)
+    -- Retrieve stored chart from project extended state
+    local _, chart_str = reaper.GetProjExtState(0, "MCP_BackingTrack", "chart")
+    if not chart_str or chart_str == "" then
+        return {ok = false, error = "No backing track chart data in project. Generate a backing track first."}
+    end
+
+    local chart = decode_json(chart_str)
+    if not chart or type(chart) ~= "table" then
+        return {ok = false, error = "No backing track chart data in project. Generate a backing track first."}
+    end
+
+    -- Determine the style to use
+    local new_style = genre_override
+    if not new_style or new_style == "" then
+        if style and style ~= "genre" then
+            new_style = style
+        else
+            local _, stored_style = reaper.GetProjExtState(0, "MCP_BackingTrack", "style")
+            new_style = stored_style or "rock"
+        end
+    end
+
+    -- Load generators
+    local old_path = package.path
+    package.path = session_template_path .. "lib/?.lua;" .. session_template_path .. "lib/backing/?.lua;" .. package.path
+    local ok_gen, generators_mod = pcall(require, "generators")
+    package.path = old_path
+
+    if not ok_gen then
+        return {ok = false, error = "Failed to load generators: " .. tostring(generators_mod)}
+    end
+
+    -- Generate new notes for this instrument
+    local all_notes, err = generators_mod.generate_instrument(instrument, chart, new_style)
+    if not all_notes then
+        return {ok = false, error = err or "Failed to generate notes for " .. instrument}
+    end
+
+    -- Find the existing track by name prefix
+    local PREFIXES = {
+        drums = "BT - Drums", bass = "BT - Bass",
+        keys = "BT - Keys", guitar = "BT - Rhythm Guitar",
+    }
+    local prefix = PREFIXES[instrument]
+    if not prefix then
+        return {ok = false, error = "Unknown instrument: " .. instrument}
+    end
+
+    local track = nil
+    for i = 0, reaper.CountTracks(0) - 1 do
+        local tr = reaper.GetTrack(0, i)
+        local _, name = reaper.GetTrackName(tr)
+        if name == prefix then
+            track = tr
+            break
+        end
+    end
+
+    if not track then
+        return {ok = false, error = "Track '" .. prefix .. "' not found. Generate a backing track first."}
+    end
+
+    -- MIDI channel for this instrument
+    local CHANNELS = { drums = 9, bass = 0, keys = 1, guitar = 3 }
+    local channel = CHANNELS[instrument] or 0
+
+    -- Calculate total song length
+    local total_beats = 0
+    for _, section in ipairs(chart.sections) do
+        total_beats = total_beats + (section.bars or #section.chords) * 4
+    end
+    local bpm = chart.bpm or 120
+    local total_seconds = total_beats / bpm * 60
+
+    reaper.Undo_BeginBlock()
+    reaper.PreventUIRefresh(1)
+
+    -- Delete existing MIDI items on this track
+    local item_count = reaper.CountTrackMediaItems(track)
+    for i = item_count - 1, 0, -1 do
+        local item = reaper.GetTrackMediaItem(track, i)
+        reaper.DeleteTrackMediaItem(track, item)
+    end
+
+    -- Create new MIDI item and insert notes
+    local item = reaper.CreateNewMIDIItemInProj(track, 0, total_seconds, false)
+    local notes_inserted = 0
+    if item then
+        local take = reaper.GetActiveTake(item)
+        if take then
+            for _, n in ipairs(all_notes) do
+                local start_ppq = math.floor(n.start_beats * 960)
+                local end_ppq = start_ppq + math.floor(n.length_beats * 960)
+                reaper.MIDI_InsertNote(take, false, false, start_ppq, end_ppq,
+                    channel, n.pitch, n.velocity, false)
+                notes_inserted = notes_inserted + 1
+            end
+            reaper.MIDI_Sort(take)
+        end
+    end
+
+    reaper.PreventUIRefresh(-1)
+    reaper.Undo_EndBlock("Regenerate " .. instrument .. " (" .. new_style .. ")", -1)
+    reaper.TrackList_AdjustWindows(false)
+    reaper.UpdateArrange()
+
+    return {ok = true, ret = {genre = new_style, notes = notes_inserted}}
 end
 
 -- Export function table for DSL
@@ -949,6 +1065,7 @@ DSL_FUNCTIONS = {
 
     -- Backing Tracks
     GenerateBackingTrack = GenerateBackingTrack,
+    RegeneratePart = RegeneratePart,
 }
 
 -- Main processing function

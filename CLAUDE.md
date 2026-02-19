@@ -78,7 +78,7 @@ Scrapes chord charts from Ultimate Guitar, parses into normalized SongChart, gen
 
 **Data flow:** `lookup_song()` → search UG → scrape chords → `parse_chord_chart()` → bridge `GenerateBackingTrack` → Lua `generators.build()` → REAPER tracks with VSTi + MIDI.
 
-`regenerate_part()` re-generates a single instrument via `RegeneratePart` bridge function (Lua-side handler not yet wired in `mcp_bridge.lua`).
+`regenerate_part()` re-generates a single instrument via `RegeneratePart` bridge function. Chart data is stored in REAPER project extended state (`MCP_BackingTrack` section) after initial generation.
 
 ## Conventions
 
