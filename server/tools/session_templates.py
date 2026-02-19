@@ -118,20 +118,90 @@ async def scan_plugins() -> str:
 
 
 # ============================================================================
+# Action Script Tools
+# ============================================================================
+
+# All available action scripts
+SESSION_ACTIONS = {
+    "quick_tune": "Toggle ReaTune bypass on all DI tracks",
+    "reference_ab": "A/B toggle between mix and reference track",
+    "reamp": "Create a reamp track from selected DI with Neural DSP",
+    "arm_all_di": "Toggle arm state on all DI tracks",
+    "tap_tempo": "Tap tempo (call twice within 3 seconds)",
+    "idea_marker": "Drop auto-numbered IDEA marker at cursor",
+    "bounce_selection": "Bounce time selection to new track",
+    "chapter_marker": "Drop numbered chapter marker at cursor",
+    "tone_snapshot": "Drop marker with current FX settings",
+    "cycle_tone": "Cycle through tone tracks (A/B/C/D)",
+    "playback_rate": "Cycle playback rate (50/70/80/90/100%)",
+    "setlist_marker": "Drop SONG marker at cursor",
+    "arm_next_track": "Disarm current track, arm next",
+    "noise_capture": "Toggle noise capture mode on vocal tracks",
+    "song_structure_marker": "Drop color-coded song structure marker",
+    "chord_marker": "Drop chord marker at cursor",
+    "chord_region": "Create chord region over time selection",
+    "session_backup": "Save timestamped backup of current project",
+    "auto_trim_silence": "Split and trim silence from selected items",
+    "toggle_meters": "Toggle master track metering visibility",
+    "add_guitar_od": "Add a new guitar overdub track",
+    "add_vocal": "Add a new vocal track with FX chain",
+    "new_take_folder": "Switch to next take for comp workflow",
+    "cleanup_session": "Remove empty takes and heal splits",
+    "practice_mode": "Set up practice loop with slowed playback",
+    "tone_browser": "Cycle Neural DSP plugins on selected track",
+}
+
+
+async def run_session_action(action_name: str) -> str:
+    """Run a session template action script.
+
+    Args:
+        action_name: Name of the action to run (e.g., "quick_tune", "reference_ab")
+    """
+    if action_name not in SESSION_ACTIONS:
+        lines = [f"Unknown action: '{action_name}'", "", "Available actions:"]
+        for name, desc in sorted(SESSION_ACTIONS.items()):
+            lines.append(f"  {name}: {desc}")
+        return "\n".join(lines)
+
+    result = await bridge.call_lua("RunSessionAction", [action_name])
+
+    if result.get("ok"):
+        return f"Action '{action_name}' executed: {SESSION_ACTIONS[action_name]}"
+    else:
+        raise Exception(f"Action failed: {result.get('error', 'Unknown error')}")
+
+
+async def list_session_actions() -> str:
+    """List all available session template action scripts."""
+    lines = ["Available session actions:", ""]
+    for name, desc in sorted(SESSION_ACTIONS.items()):
+        lines.append(f"  {name}: {desc}")
+    return "\n".join(lines)
+
+
+# ============================================================================
 # Registration Function
 # ============================================================================
 
 def register_session_template_tools(mcp) -> int:
     """Register all session template tools with the MCP instance"""
+    from ..dsl.session_wrappers import register_session_dsl_tools
+
     tools = [
         (create_session, "Create a new REAPER session from a template type"),
         (list_session_types, "List all available session template types"),
         (get_session_config, "Get session template configuration values"),
         (smart_add_fx, "Add an FX plugin with automatic preferred/fallback resolution"),
         (scan_plugins, "Scan for installed plugins and report availability"),
+        (run_session_action, "Run a session template action script by name"),
+        (list_session_actions, "List all available session template action scripts"),
     ]
 
     for func, desc in tools:
         decorated = mcp.tool()(func)
 
-    return len(tools)
+    # Also register DSL wrappers (natural language session creation)
+    dsl_count = register_session_dsl_tools(mcp)
+
+    return len(tools) + dsl_count

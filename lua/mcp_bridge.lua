@@ -809,6 +809,50 @@ local function CreateSession(session_type, session_name, bpm, time_sig, key, sam
     return {ok = true, ret = {session_type = session_type, session_name = session_name, bpm = bpm}}
 end
 
+-- Session Template Action Proxies
+-- Execute action scripts from the session template system via the bridge.
+local function RunSessionAction(action_name)
+    local actions_dir = session_template_path .. "actions/"
+    local script_path = actions_dir .. action_name .. ".lua"
+    local f = io.open(script_path, "r")
+    if not f then
+        return {ok = false, error = "Action script not found: " .. script_path}
+    end
+    f:close()
+
+    local ok, err = pcall(dofile, script_path)
+    if ok then
+        return {ok = true, ret = {action = action_name}}
+    else
+        return {ok = false, error = "Action failed: " .. tostring(err)}
+    end
+end
+
+local function AddMonitorFX(plugin_name, bypassed)
+    local master = reaper.GetMasterTrack(0)
+    if not master then
+        return {ok = false, error = "Could not get master track"}
+    end
+    local fx_idx = reaper.TrackFX_AddByName(master, plugin_name, false, -1 + 0x1000000)
+    if fx_idx < 0 then
+        return {ok = false, error = "Failed to add monitor FX: " .. tostring(plugin_name)}
+    end
+    if bypassed then
+        reaper.TrackFX_SetEnabled(master, fx_idx + 0x1000000, false)
+    end
+    return {ok = true, ret = {plugin = plugin_name, fx_index = fx_idx, bypassed = bypassed or false}}
+end
+
+local function GetSetProjectGrid(set, division)
+    if set then
+        reaper.GetSetProjectGrid(0, true, division)
+        return {ok = true}
+    else
+        local _, div = reaper.GetSetProjectGrid(0, false)
+        return {ok = true, ret = {division = div}}
+    end
+end
+
 -- Export function table for DSL
 DSL_FUNCTIONS = {
     -- Track info
@@ -855,6 +899,9 @@ DSL_FUNCTIONS = {
     ScanPlugins = ScanPlugins,
     SmartAddFX = SmartAddFX,
     CreateSession = CreateSession,
+    AddMonitorFX = AddMonitorFX,
+    GetSetProjectGrid = GetSetProjectGrid,
+    RunSessionAction = RunSessionAction,
 }
 
 -- Main processing function
