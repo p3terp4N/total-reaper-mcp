@@ -859,9 +859,9 @@ local function GenerateBackingTrack(chart_json, instruments, style)
     package.path = session_template_path .. "lib/?.lua;" .. session_template_path .. "lib/backing/?.lua;" .. package.path
 
     local ok_gen, generators_mod = pcall(require, "generators")
-    package.path = old_path
 
     if not ok_gen then
+        package.path = old_path
         return {ok = false, error = "Failed to load generators: " .. tostring(generators_mod)}
     end
 
@@ -877,14 +877,17 @@ local function GenerateBackingTrack(chart_json, instruments, style)
     end
 
     if type(chart) ~= "table" then
+        package.path = old_path
         return {ok = false, error = "Invalid chart data"}
     end
 
     reaper.Undo_BeginBlock()
     reaper.PreventUIRefresh(1)
 
+    -- Keep package.path set during build so generators can require backing modules
     local ok_build, result = pcall(generators_mod.build, chart, instruments, style)
 
+    package.path = old_path
     reaper.PreventUIRefresh(-1)
     reaper.Undo_EndBlock("Generate Backing Track", -1)
     reaper.TrackList_AdjustWindows(false)
@@ -926,18 +929,19 @@ local function RegeneratePart(instrument, style, genre_override)
         end
     end
 
-    -- Load generators
+    -- Load generators (keep path set during generate so backing modules resolve)
     local old_path = package.path
     package.path = session_template_path .. "lib/?.lua;" .. session_template_path .. "lib/backing/?.lua;" .. package.path
     local ok_gen, generators_mod = pcall(require, "generators")
-    package.path = old_path
 
     if not ok_gen then
+        package.path = old_path
         return {ok = false, error = "Failed to load generators: " .. tostring(generators_mod)}
     end
 
     -- Generate new notes for this instrument
     local all_notes, err = generators_mod.generate_instrument(instrument, chart, new_style)
+    package.path = old_path
     if not all_notes then
         return {ok = false, error = err or "Failed to generate notes for " .. instrument}
     end
