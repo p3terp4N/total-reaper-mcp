@@ -373,6 +373,37 @@ function bass.latin(chord_name, section_type, bar_in_phrase)
 end
 
 -- ============================================================================
+-- R&B (Neo-Soul) — Smooth, melodic bass with ghost notes
+-- ============================================================================
+
+function bass.r_b(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    local t = third(root, quality)
+    local f = fifth(root)
+    local sv = seventh(root, quality)
+
+    -- Smooth melodic line with ghost notes and space
+    local notes = {}
+    if bar_in_phrase % 2 == 1 then
+        notes[#notes + 1] = note(root, 0, 0.8, 85)
+        notes[#notes + 1] = note(root, 0.75, 0.15, 40)     -- ghost
+        notes[#notes + 1] = note(t, 1.5, 0.6, 75)
+        notes[#notes + 1] = note(f, 2, 0.8, 80)
+        notes[#notes + 1] = note(f, 2.75, 0.15, 35)        -- ghost
+        notes[#notes + 1] = note(sv, 3.5, 0.4, 70)
+    else
+        notes[#notes + 1] = note(root, 0, 1.0, 85)
+        notes[#notes + 1] = note(sv, 1, 0.15, 35)          -- ghost
+        notes[#notes + 1] = note(f, 1.5, 0.6, 75)
+        notes[#notes + 1] = note(t, 2.5, 0.5, 80)
+        notes[#notes + 1] = note(root, 3, 0.15, 40)        -- ghost
+        notes[#notes + 1] = note(root + INTERVALS.octave, 3.5, 0.4, 70)
+    end
+
+    return notes
+end
+
+-- ============================================================================
 -- Genre Lookup
 -- ============================================================================
 
@@ -387,6 +418,7 @@ local genre_patterns = {
     reggae  = bass.reggae,
     metal   = bass.metal,
     latin   = bass.latin,
+    ["r&b"] = bass.r_b,
 }
 
 --- Get the pattern function for a genre, falling back to simple.

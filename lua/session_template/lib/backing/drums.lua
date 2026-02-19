@@ -472,6 +472,52 @@ function drums.latin(section_type, bar_in_phrase)
 end
 
 -- ============================================================================
+-- R&B (Neo-Soul)
+-- ============================================================================
+
+--- Laid-back groove: ghost-note-heavy snare, syncopated kick, open hi-hat accents.
+function drums.r_b(section_type, bar_in_phrase)
+    if bar_in_phrase % 8 == 0 then
+        return fill_bar()
+    end
+
+    local notes = {}
+
+    -- Hi-hat: 8ths with open hat accents on "and" of 2 and 4
+    for i = 0, 7 do
+        local v = (i % 2 == 0) and 70 or 55
+        notes[#notes + 1] = note(GM.hihat, i * 0.5, 0.35, v)
+    end
+    notes[#notes + 1] = note(GM.hihat_open, 1.5, 0.3, 75)
+    notes[#notes + 1] = note(GM.hihat_open, 3.5, 0.3, 75)
+
+    -- Kick: syncopated (1, "and of 2", 3.5)
+    notes[#notes + 1] = note(GM.kick, 0, 0.5, 90)
+    notes[#notes + 1] = note(GM.kick, 1.5, 0.4, 80)
+    notes[#notes + 1] = note(GM.kick, 3.5, 0.4, 75)
+
+    -- Snare on 2 and 4 (softer than rock)
+    notes[#notes + 1] = note(GM.snare, 1, 0.5, 85)
+    notes[#notes + 1] = note(GM.snare, 3, 0.5, 85)
+
+    -- Heavy ghost notes (signature neo-soul feel)
+    notes[#notes + 1] = note(GM.snare, 0.25, 0.15, 30)
+    notes[#notes + 1] = note(GM.snare, 0.75, 0.15, 35)
+    notes[#notes + 1] = note(GM.snare, 1.25, 0.15, 25)
+    notes[#notes + 1] = note(GM.snare, 1.75, 0.15, 30)
+    notes[#notes + 1] = note(GM.snare, 2.25, 0.15, 30)
+    notes[#notes + 1] = note(GM.snare, 2.75, 0.15, 35)
+    notes[#notes + 1] = note(GM.snare, 3.25, 0.15, 25)
+    notes[#notes + 1] = note(GM.snare, 3.75, 0.15, 30)
+
+    if section_type == "chorus" and bar_in_phrase == 1 then
+        notes[#notes + 1] = note(GM.crash, 0, 1.0, 85)
+    end
+
+    return notes
+end
+
+-- ============================================================================
 -- Genre Lookup
 -- ============================================================================
 
@@ -486,6 +532,7 @@ local genre_patterns = {
     reggae  = drums.reggae,
     metal   = drums.metal,
     latin   = drums.latin,
+    ["r&b"] = drums.r_b,
 }
 
 --- Get the pattern function for a genre, falling back to simple.

@@ -1,5 +1,5 @@
 -- lib/backing/guitar.lua — Rhythm guitar pattern library for backing track generation
--- Returns MIDI note data tables for 8 genres plus a simple fallback.
+-- Returns MIDI note data tables for 12 genres plus a simple fallback.
 -- Each pattern function takes (chord_name, section_type, bar_in_phrase) and
 -- returns a table of {pitch, start_beats, length_beats, velocity} for ONE bar.
 
@@ -414,6 +414,209 @@ function guitar.ballad(chord_name, section_type, bar_in_phrase)
 end
 
 -- ============================================================================
+-- Jazz — Freddie Green comping (short chord stabs, rootless voicings)
+-- ============================================================================
+
+--- Short chord stabs on beats 2 and 4, or quarter-note comp with swing feel.
+-- Uses smaller rootless voicings (3rd + 7th based) for dom7/m7/maj7 chords.
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function guitar.jazz(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    local notes = {}
+
+    -- Build compact rootless voicings inline (3-4 notes, 3rd/7th based)
+    local pitches
+    if quality == "dom7" then
+        -- 3rd, 7th, root(oct), 3rd(oct) — rootless shell
+        pitches = {
+            root + INTERVALS.major3,
+            root + INTERVALS.minor7,
+            root + INTERVALS.octave,
+        }
+    elseif quality == "m7" then
+        -- 3rd, 7th, root(oct), 5th — rootless shell
+        pitches = {
+            root + INTERVALS.minor3,
+            root + INTERVALS.minor7,
+            root + INTERVALS.octave,
+        }
+    elseif quality == "maj7" then
+        -- 3rd, 7th, root(oct) — rootless shell
+        pitches = {
+            root + INTERVALS.major3,
+            root + INTERVALS.major7,
+            root + INTERVALS.octave,
+        }
+    elseif quality == "minor" then
+        pitches = {
+            root + INTERVALS.minor3,
+            root + INTERVALS.perfect5,
+            root + INTERVALS.octave,
+        }
+    else
+        pitches = {
+            root + INTERVALS.major3,
+            root + INTERVALS.perfect5,
+            root + INTERVALS.octave,
+        }
+    end
+
+    -- Vary pattern based on bar position (keeps comping interesting)
+    if bar_in_phrase % 2 == 0 then
+        -- Quarter-note comp with swing feel (all 4 beats, varied velocity)
+        for beat = 0, 3 do
+            local vel = (beat == 1 or beat == 3) and 78 or 65
+            append(notes, strum(pitches, beat, 0.35, vel, "down"))
+        end
+    else
+        -- Freddie Green: stabs on beats 2 and 4 only
+        append(notes, strum(pitches, 1.0, 0.3, 80, "down"))
+        append(notes, strum(pitches, 3.0, 0.3, 75, "down"))
+        -- Ghost chord on the "and" of 4 (very soft)
+        append(notes, strum(pitches, 3.5, 0.2, 50, "up"))
+    end
+
+    return notes
+end
+
+-- ============================================================================
+-- Latin — Bossa nova fingerpicking (nylon-string feel)
+-- ============================================================================
+
+--- Gentle fingerpicking arpeggiation with alternating bass and upper chord tones.
+-- Smooth 8th-note flow. Uses note() for individual picked notes, not strum().
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function guitar.latin(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    local pitches = voicing(root, quality)
+    local notes = {}
+    local count = #pitches
+
+    -- Bass notes: root and fifth (alternating)
+    local bass_root = pitches[1]
+    local bass_fifth = root + INTERVALS.perfect5
+    if bass_fifth < bass_root then
+        bass_fifth = bass_fifth + INTERVALS.octave
+    end
+
+    -- Upper chord tones (skip the bass string)
+    local upper = {}
+    for i = 3, count do
+        upper[#upper + 1] = pitches[i]
+    end
+    if #upper < 2 then upper = { pitches[count], pitches[count] } end
+
+    -- Bossa nova pattern: bass-upper-upper-bass-upper-upper-bass-upper
+    -- 8th-note positions across 4 beats
+    --   beat: 0   0.5  1   1.5  2   2.5  3   3.5
+    --   part: B1  U1   U2  B5   U2  U1   B1  U1
+
+    notes[#notes + 1] = note(bass_root,     0.0,  0.6, 75)
+    notes[#notes + 1] = note(upper[1],      0.5,  0.6, 65)
+    notes[#notes + 1] = note(upper[#upper], 1.0,  0.6, 68)
+    notes[#notes + 1] = note(bass_fifth,    1.5,  0.6, 72)
+    notes[#notes + 1] = note(upper[#upper], 2.0,  0.6, 66)
+    notes[#notes + 1] = note(upper[1],      2.5,  0.6, 64)
+    notes[#notes + 1] = note(bass_root,     3.0,  0.6, 73)
+    notes[#notes + 1] = note(upper[1],      3.5,  0.6, 62)
+
+    return notes
+end
+
+-- ============================================================================
+-- Metal — Palm-muted power chord chugging
+-- ============================================================================
+
+--- Palm-muted power chords (root + fifth + octave only). Very short durations
+-- to simulate palm muting. High velocity. Chorus sections use 16th-note chugging.
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function guitar.metal(chord_name, section_type, bar_in_phrase)
+    local root, _quality = parse_chord(chord_name)
+    local notes = {}
+
+    -- Power chord only: root + fifth + octave (no thirds)
+    local pitches = {
+        root,
+        root + INTERVALS.perfect5,
+        root + INTERVALS.octave,
+    }
+
+    if section_type == "chorus" then
+        -- 16th-note chugging (16 notes per bar)
+        for i = 0, 15 do
+            local pos = i * 0.25
+            -- Accented downbeats, slightly softer upbeats
+            local vel = (i % 4 == 0) and 120 or 110
+            local len = (i % 4 == 0) and 0.22 or 0.15
+            append(notes, strum(pitches, pos, len, vel, "down"))
+        end
+    else
+        -- 8th-note palm-muted chugging with accented downbeats
+        for i = 0, 7 do
+            local pos = i * 0.5
+            local vel = (i % 2 == 0) and 115 or 105
+            local len = (i % 2 == 0) and 0.25 or 0.18
+            append(notes, strum(pitches, pos, len, vel, "down"))
+        end
+    end
+
+    return notes
+end
+
+-- ============================================================================
+-- R&B / Neo-Soul — Clean chord stabs with space and embellishments
+-- ============================================================================
+
+--- Clean tone chord stabs with space (beats 1 and 2.5). Softer velocities,
+-- occasional grace-note embellishments (hammer-on simulation) and arpeggiated fills.
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function guitar.r_b(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    local pitches = voicing(root, quality)
+    local notes = {}
+
+    -- Main stab on beat 1
+    append(notes, strum(pitches, 0.0, 0.6, 72, "down"))
+
+    -- Second stab on the "and" of beat 2 (beat 2.5)
+    append(notes, strum(pitches, 2.5, 0.5, 68, "down"))
+
+    -- Embellishments vary by bar position
+    if bar_in_phrase % 4 == 0 then
+        -- Grace note before beat 1 stab (hammer-on simulation)
+        -- Quick note a half-step below the top voice, placed just before beat 1
+        local top = pitches[#pitches]
+        notes[#notes + 1] = note(top - 1, -0.08, 0.08, 55)
+    elseif bar_in_phrase % 4 == 2 then
+        -- Arpeggiated fill in the gap (beats 3.0 - 3.75)
+        local count = #pitches
+        local fill_notes = math.min(count, 3)
+        for i = 1, fill_notes do
+            local idx = count - fill_notes + i
+            if idx < 1 then idx = 1 end
+            notes[#notes + 1] = note(pitches[idx], 3.0 + (i - 1) * 0.25, 0.35, 60 + i * 5)
+        end
+    else
+        -- Soft ghost stab on beat 4 (very quiet, adds subtle movement)
+        append(notes, strum(pitches, 3.5, 0.3, 48, "up"))
+    end
+
+    return notes
+end
+
+-- ============================================================================
 -- Genre Lookup
 -- ============================================================================
 
@@ -425,6 +628,10 @@ local genre_patterns = {
     country = guitar.country,
     reggae  = guitar.reggae,
     ballad  = guitar.ballad,
+    jazz    = guitar.jazz,
+    latin   = guitar.latin,
+    metal   = guitar.metal,
+    ["r&b"] = guitar.r_b,
 }
 
 --- Get the pattern function for a genre, falling back to simple.
