@@ -113,27 +113,50 @@ async def generate_backing_track(
 async def regenerate_part(
     instrument: str,
     style: str = "genre",
+    genre_override: str = "",
 ) -> str:
     """Regenerate a single instrument part with a different style.
 
-    Phase 2 stub — will re-generate one instrument track using
-    the current chart data stored in the project.
+    Re-generates one instrument track using the chart data already
+    stored in the REAPER project from the initial backing track generation.
 
     Args:
         instrument: Instrument to regenerate (drums, bass, keys, guitar)
         style: New style to apply
+        genre_override: Force a specific genre
     """
-    if instrument.lower() not in VALID_INSTRUMENTS:
+    instrument = instrument.lower().strip()
+    if instrument not in VALID_INSTRUMENTS:
         return (
             f"Invalid instrument: '{instrument}'. "
             f"Valid options: {', '.join(VALID_INSTRUMENTS)}"
         )
 
-    # Phase 2 stub
-    return (
-        f"regenerate_part is a Phase 2 feature (not yet implemented). "
-        f"Instrument: {instrument}, Style: {style}"
-    )
+    if genre_override and genre_override.lower() not in AVAILABLE_GENRES:
+        return (
+            f"Unknown genre: '{genre_override}'. "
+            f"Available: {', '.join(AVAILABLE_GENRES)}"
+        )
+
+    result = await bridge.call_lua("RegeneratePart", [
+        instrument, style, genre_override or ""
+    ])
+
+    if result.get("ok"):
+        ret = result.get("ret", {})
+        new_genre = ret.get("genre", genre_override or style)
+        return (
+            f"Regenerated {instrument} part with {new_genre} style. "
+            f"Track updated in REAPER."
+        )
+    else:
+        error = result.get("error", "Unknown error")
+        if "no chart" in error.lower() or "no backing" in error.lower():
+            return (
+                "No backing track found in current project. "
+                "Generate a backing track first with generate_backing_track()."
+            )
+        raise Exception(f"Failed to regenerate {instrument}: {error}")
 
 
 async def list_backing_genres() -> str:
@@ -243,7 +266,7 @@ def register_backing_track_tools(mcp) -> int:
 
     tools = [
         (generate_backing_track, "Generate MIDI backing tracks from a song's chord chart"),
-        (regenerate_part, "Regenerate a single instrument part (Phase 2 stub)"),
+        (regenerate_part, "Regenerate a single instrument part with a different style/genre"),
         (list_backing_genres, "List all available backing track genres with descriptions"),
         (get_song_chart, "Fetch and parse a chord chart without generating tracks"),
         (manual_chart, "Generate backing tracks from manually pasted chord text"),

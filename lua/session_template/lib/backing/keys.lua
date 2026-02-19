@@ -1,5 +1,5 @@
 -- lib/backing/keys.lua — Keys/piano pattern library for backing track generation
--- Returns MIDI note data tables for 7 genres plus a simple fallback.
+-- Returns MIDI note data tables for 11 genres plus a simple fallback.
 -- Each pattern function takes (chord_name, section_type, bar_in_phrase) and
 -- returns a table of {pitch, start_beats, length_beats, velocity} for ONE bar.
 
@@ -322,6 +322,185 @@ function keys.ballad(chord_name, section_type, bar_in_phrase)
 end
 
 -- ============================================================================
+-- Country — Honky-tonk piano (boom-chick left hand + triads)
+-- ============================================================================
+
+--- Root-fifth alternating left hand with triads on upbeats.
+-- Matches the bass root-fifth pattern and drums' train beat.
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function keys.country(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    local pitches = voicing(root, quality)
+    local fifth = root + INTERVALS.perfect5
+    local notes = {}
+
+    -- Left hand: boom-chick (root on 1+3, fifth on 2+4)
+    local lh_vel = (section_type == "chorus") and 90 or 80
+    notes[#notes + 1] = note(root - INTERVALS.octave, 0, 0.8, lh_vel)
+    notes[#notes + 1] = note(fifth - INTERVALS.octave, 1, 0.8, lh_vel - 10)
+    notes[#notes + 1] = note(root - INTERVALS.octave, 2, 0.8, lh_vel)
+    notes[#notes + 1] = note(fifth - INTERVALS.octave, 3, 0.8, lh_vel - 10)
+
+    -- Right hand: triads on upbeats (the "chick")
+    local rh_vel = (section_type == "chorus") and 85 or 70
+    append(notes, block_chord(pitches, 0.5, 0.4, rh_vel))
+    append(notes, block_chord(pitches, 1.5, 0.4, rh_vel - 5))
+    append(notes, block_chord(pitches, 2.5, 0.4, rh_vel))
+    append(notes, block_chord(pitches, 3.5, 0.4, rh_vel - 5))
+
+    return notes
+end
+
+-- ============================================================================
+-- Latin — Bossa nova comping (syncopated anticipations)
+-- ============================================================================
+
+--- Syncopated chord stabs with anticipations on "and of 2" and "and of 4".
+-- Light, airy voicings matching the drums' bossa nova feel.
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function keys.latin(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    local pitches = voicing(root, quality)
+    local notes = {}
+
+    local vel = (section_type == "chorus") and 80 or 70
+
+    -- Beat 1: downbeat anchor, let it breathe
+    append(notes, block_chord(pitches, 0, 1.2, vel))
+
+    -- "And of 2" (beat 1.5): syncopated anticipation
+    append(notes, block_chord(pitches, 1.5, 0.8, vel - 10))
+
+    -- Beat 3: light touch
+    append(notes, block_chord(pitches, 2, 0.5, vel - 15))
+
+    -- "And of 4" (beat 3.5): anticipation leading into next bar
+    append(notes, block_chord(pitches, 3.5, 0.5, vel - 5))
+
+    return notes
+end
+
+-- ============================================================================
+-- Metal — Aggressive power chord stabs / sustained pads
+-- ============================================================================
+
+--- Root+fifth+octave power voicings only (no thirds). Driving intensity.
+-- Matches the drums' relentless 8th/16th note patterns.
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function keys.metal(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    -- Power chord voicing: root + fifth + octave (no thirds)
+    local pitches = { root, root + INTERVALS.perfect5, root + INTERVALS.octave }
+    local notes = {}
+
+    if section_type == "chorus" then
+        -- Chorus: driving 8th-note stabs, aggressive
+        for i = 0, 7 do
+            local vel = (i % 2 == 0) and 110 or 100
+            append(notes, block_chord(pitches, i * 0.5, 0.4, vel))
+        end
+    elseif section_type == "bridge" then
+        -- Bridge: sustained pad for contrast
+        append(notes, block_chord(pitches, 0, 3.8, 90))
+    else
+        -- Verse: half-note stabs with space
+        append(notes, block_chord(pitches, 0, 1.5, 100))
+        append(notes, block_chord(pitches, 2, 1.5, 95))
+        -- Push note on beat 4 for momentum
+        if bar_in_phrase % 2 == 0 then
+            append(notes, block_chord(pitches, 3.5, 0.4, 105))
+        end
+    end
+
+    return notes
+end
+
+-- ============================================================================
+-- R&B — Smooth Rhodes-style voicings (neo-soul)
+-- ============================================================================
+
+--- Extended chord voicings (9ths), gentle arpeggiation, ghost notes.
+-- Soft velocities (60-80) for that Rhodes/Wurlitzer warmth.
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function keys.r_b(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    local pitches = voicing(root, quality)
+    local notes = {}
+
+    -- Add 9th for neo-soul color
+    local ninth = root + INTERVALS.major2 + INTERVALS.octave
+    local extended = {}
+    for i = 1, #pitches do
+        extended[#extended + 1] = pitches[i]
+    end
+    extended[#extended + 1] = ninth
+
+    -- Gentle sustained pad as the foundation
+    append(notes, block_chord(extended, 0, 3.5, 65))
+
+    -- Subtle arpeggiated movement: ghost notes for texture
+    if bar_in_phrase % 2 == 1 then
+        -- Odd bars: ascending ghost arpeggio
+        notes[#notes + 1] = note(pitches[1], 1.0, 0.4, 45)  -- ghost
+        notes[#notes + 1] = note(ninth, 1.5, 0.5, 50)        -- ghost 9th
+        notes[#notes + 1] = note(pitches[#pitches], 2.5, 0.4, 48) -- ghost top
+    else
+        -- Even bars: descending movement
+        notes[#notes + 1] = note(ninth, 0.75, 0.4, 48)       -- ghost 9th
+        notes[#notes + 1] = note(pitches[#pitches], 1.5, 0.5, 45) -- ghost
+        notes[#notes + 1] = note(pitches[1], 2.75, 0.4, 50)  -- ghost root
+    end
+
+    -- Chorus: add octave-up pad for warmth
+    if section_type == "chorus" then
+        for i = 1, #pitches do
+            notes[#notes + 1] = note(pitches[i] + INTERVALS.octave, 0, 3.5, 40)
+        end
+    end
+
+    return notes
+end
+
+-- ============================================================================
+-- Reggae — Offbeat bubble organ (skank)
+-- ============================================================================
+
+--- Short stabs on the "and" of each beat (0.5, 1.5, 2.5, 3.5).
+-- Classic skank timing matching the guitar reggae pattern.
+-- @param chord_name string
+-- @param section_type string
+-- @param bar_in_phrase number
+-- @return table Notes for one bar
+function keys.reggae(chord_name, section_type, bar_in_phrase)
+    local root, quality = parse_chord(chord_name)
+    local pitches = voicing(root, quality)
+    local notes = {}
+
+    -- Offbeat skank: short, sharp stabs on the "and" of each beat
+    local vel = (section_type == "chorus") and 85 or 75
+    local offbeats = { 0.5, 1.5, 2.5, 3.5 }
+    local vels     = { vel, vel - 5, vel, vel - 5 }
+
+    for i = 1, #offbeats do
+        append(notes, block_chord(pitches, offbeats[i], 0.3, vels[i]))
+    end
+
+    return notes
+end
+
+-- ============================================================================
 -- Genre Lookup
 -- ============================================================================
 
@@ -332,6 +511,11 @@ local genre_patterns = {
     jazz    = keys.jazz,
     funk    = keys.funk,
     ballad  = keys.ballad,
+    country = keys.country,
+    latin   = keys.latin,
+    metal   = keys.metal,
+    ["r&b"] = keys.r_b,
+    reggae  = keys.reggae,
 }
 
 --- Get the pattern function for a genre, falling back to simple.
