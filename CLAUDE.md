@@ -43,7 +43,10 @@ Full API docs are in `docs/reference/`. Use these when adding bridge functions o
 REAPER is not installed. All tests run with mocks.
 
 ```bash
-# Backing track + song lookup tests (48 tests, no REAPER needed)
+# All tests (68 total, no REAPER needed)
+python3.13 -m pytest tests/test_backing_tracks.py tests/test_song_lookup.py tests/test_session_templates.py -v --noconftest
+
+# Backing track + song lookup tests (48 tests)
 python3.13 -m pytest tests/test_backing_tracks.py tests/test_song_lookup.py -v --noconftest
 
 # Session template tests (20 tests, no REAPER needed)
@@ -71,9 +74,11 @@ Hardware-specific routing for: Tascam Model 12, Quad Cortex, RC-600, BeatStep Pr
 
 ## Backing Track Generator
 
-Scrapes chord charts from Ultimate Guitar, parses into normalized SongChart, generates MIDI patterns for drums/bass/keys/guitar across 10 genres (blues, country, funk, jazz, latin, metal, pop, r&b, reggae, rock).
+Scrapes chord charts from Ultimate Guitar, parses into normalized SongChart, generates MIDI patterns for drums/bass/keys/guitar across 10 genres (blues, country, funk, jazz, latin, metal, pop, r&b, reggae, rock). All 4 instruments have full coverage of all 10 genres plus a "ballad" bonus pattern.
 
 **Data flow:** `lookup_song()` → search UG → scrape chords → `parse_chord_chart()` → bridge `GenerateBackingTrack` → Lua `generators.build()` → REAPER tracks with VSTi + MIDI.
+
+`regenerate_part()` re-generates a single instrument via `RegeneratePart` bridge function (Lua-side handler not yet wired in `mcp_bridge.lua`).
 
 ## Conventions
 

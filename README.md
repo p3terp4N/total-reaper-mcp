@@ -220,9 +220,11 @@ Generate MIDI backing tracks from any song's chord chart.
 3. Generate MIDI patterns per instrument using genre-aware pattern libraries
 4. Create REAPER tracks with VSTi instruments and bus routing
 
-**Supported instruments:** drums, bass, keys, rhythm guitar
+**Supported instruments:** drums, bass, keys, rhythm guitar — all with full coverage of all 10 genres
 
-**10 genre styles:** blues, country, funk, jazz, latin, metal, pop, r&b, reggae, rock (plus simple fallback)
+**10 genre styles:** blues, country, funk, jazz, latin, metal, pop, r&b, reggae, rock (plus simple fallback and ballad bonus)
+
+**Regenerate parts:** `regenerate_part(instrument, genre_override)` to re-generate a single instrument with a different style
 
 ```python
 # Via MCP tool
@@ -267,7 +269,7 @@ python -m server.app
 python -m server.app --profile dsl           # Minimal natural language (15 tools)
 python -m server.app --profile groq-essential # Traditional ReaScript interface
 python -m server.app --profile mixing         # Mixing-focused tools
-python -m server.app --profile full           # All 600+ tools
+python -m server.app --profile full           # All 700+ tools
 
 # Using with the relay script
 python run_with_relay.py                      # Uses default (dsl-production)
