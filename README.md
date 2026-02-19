@@ -1,6 +1,6 @@
 # REAPER MCP Server
 
-An MCP (Model Context Protocol) server that exposes [REAPER DAW](https://www.reaper.fm/) functionality through a clean API interface.
+An MCP (Model Context Protocol) server that exposes [REAPER DAW](https://www.reaper.fm/) functionality through a clean API interface. Includes **session templates** for 9 workflow types and **backing track generation** from chord charts.
 
 ![REAPER MCP Server](assets/repo-readme-image.png)
 
@@ -12,6 +12,7 @@ This project is developed and tested on **macOS** but should work on Windows and
 
 - [REAPER](https://www.reaper.fm/) 6.83+ (includes embedded Lua 5.4 and full ReaScript API)
 - Python 3.10+ (required for MCP 1.1.2+)
+- `requests` library (for chord chart scraping)
 - LuaSocket library (optional - only needed for socket-based communication)
 
 ## Architecture
@@ -33,14 +34,14 @@ The communication flow:
 ### For AI/LLM Integration (Recommended)
 
 ```bash
-# Start with default profile (dsl-production: 53 tools)
-# Includes natural language DSL + essential production tools
+# Start with default profile (dsl-production: ~53 tools)
 python -m server.app
 
 # Or choose a specific profile:
-python -m server.app --profile dsl              # Minimal natural language only (15 tools)
-python -m server.app --profile groq-essential   # Traditional ReaScript tools (146 tools)
-python -m server.app --profile full             # All tools (600+ tools)
+python -m server.app --profile session-template  # Session templates + routing
+python -m server.app --profile backing-track     # Backing track generation
+python -m server.app --profile groq-essential    # Traditional ReaScript tools (~146 tools)
+python -m server.app --profile full              # All tools (700+ tools)
 ```
 
 The default `dsl-production` profile is optimized for AI/LLM use, providing natural language commands plus essential MIDI, FX, and rendering tools.
@@ -99,7 +100,7 @@ The MCP server communicates with REAPER through a file-based bridge. This requir
    
    # Or with a specific profile
    python -m server.app --profile dsl      # Natural language tools only (15 tools)
-   python -m server.app --profile full     # All tools (600+ tools)
+   python -m server.app --profile full     # All tools (700+ tools)
    ```
 
 **Important Architecture Note:** 
@@ -189,6 +190,51 @@ The conversation tracking system creates detailed reports in `reaper-chat/conver
 - Specific queries that need improvement
 - Progress tracking between test sessions
 
+## Session Templates
+
+Create pre-configured REAPER sessions from 9 template types, with hardware-specific routing for Tascam Model 12, Quad Cortex, RC-600, BeatStep Pro, and Nektar LX61+.
+
+| Template | Description |
+|----------|-------------|
+| `guitar` | Guitar recording with DI + processed tracks, amp sim, reference playback |
+| `production` | Full multi-track production (drums, bass, guitars, keys, vocals, bus routing) |
+| `songwriting` | Lightweight idea capture with chord/lyric markers |
+| `jam` | Loop-based jamming with RC-600 integration |
+| `podcast` | Multi-mic podcast with chapters, noise gate, limiter |
+| `mixing` | Import stems, bus structure, reference track, metering |
+| `tone` | Amp/effect design with A/B comparison and snapshot capture |
+| `live` | Live performance with setlist markers, click track, backing tracks |
+| `transcription` | Playback-focused with speed control and section markers |
+
+**28 action scripts** provide keybind-ready operations: `quick_tune`, `reamp`, `reference_ab`, `tap_tempo`, `idea_marker`, `bounce_selection`, `tone_snapshot`, and more.
+
+Works both via Claude (`create_session("guitar", "My Song", 120)`) and standalone (keybind in REAPER).
+
+## Backing Track Generator
+
+Generate MIDI backing tracks from any song's chord chart.
+
+**How it works:**
+1. Search & scrape chord charts from Ultimate Guitar
+2. Parse into normalized song chart (key, BPM, sections, chords)
+3. Generate MIDI patterns per instrument using genre-aware pattern libraries
+4. Create REAPER tracks with VSTi instruments and bus routing
+
+**Supported instruments:** drums, bass, keys, rhythm guitar
+
+**10 genre styles:** blues, country, funk, jazz, latin, metal, pop, r&b, reggae, rock (plus simple fallback)
+
+```python
+# Via MCP tool
+generate_backing_track(song="Hotel California", artist="Eagles", instruments="drums,bass,keys")
+
+# Via natural language DSL
+make_backing_track("backing track for Superstition by Stevie Wonder")
+
+# Manual chord input (when scraping fails)
+manual_chart("[Verse]\nAm G F E\n[Chorus]\nC G Am F", title="My Song", bpm=120)
+```
+
 ## Tool Profiles
 
 The REAPER MCP Server supports **tool profiles** to limit which tools are exposed based on your needs or LLM limitations. Many LLMs have tool count restrictions (e.g., Groq: 128, OpenAI: 128), and profiles help you stay within these limits while focusing on the tools you need.
@@ -198,13 +244,15 @@ The REAPER MCP Server supports **tool profiles** to limit which tools are expose
 | Profile | Tool Count | Description | Use Case |
 |---------|------------|-------------|----------|
 | `dsl-production` | ~53 | DSL + essential tools | **DEFAULT** - Natural language + core production |
+| `session-template` | ~60 | Session creation + routing | Pre-configured REAPER sessions |
+| `backing-track` | ~30 | Chord scraping + MIDI generation | Backing track creation |
 | `dsl` | **15** | Natural language DSL tools | Minimal AI-friendly interface |
 | `groq-essential` | ~146 | Core REAPER functionality | Traditional tools, Groq-compatible |
 | `groq-extended` | ~200+ | Extended functionality | More tools, may exceed Groq's limit |
 | `minimal` | ~100 | Bare minimum tools | Testing and lightweight operations |
 | `midi-production` | ~150 | MIDI-focused tools | MIDI composition and editing workflows |
 | `mixing` | ~120 | Mixing and mastering tools | Audio mixing, effects, and routing |
-| `full` | 600+ | All available tools | Complete access (may overwhelm LLMs) |
+| `full` | 700+ | All available tools | Complete access (may overwhelm LLMs) |
 
 ### Using Profiles
 
@@ -262,11 +310,11 @@ Add your own profile in `server/tool_profiles.py`:
 
 ## Available Tools
 
-The REAPER MCP Server implements **600+ tools** across 40+ categories. The number of tools available depends on the profile you choose (see Tool Profiles section above).
+The REAPER MCP Server implements **700+ tools** across 38 categories. The number of tools available depends on the profile you choose (see Tool Profiles section above).
 
 ### Core DAW Functions
 - Track Management & Controls
-- Media Items & Takes  
+- Media Items & Takes
 - MIDI Operations
 - Effects/FX Management
 - Automation & Envelopes
@@ -274,6 +322,8 @@ The REAPER MCP Server implements **600+ tools** across 40+ categories. The numbe
 - Transport & Playback
 
 ### Music Production Tools
+- **Session Templates** - 9 pre-configured session types with hardware routing
+- **Backing Tracks** - Chord chart scraping, MIDI pattern generation (10 genres, 4 instruments)
 - **Loop & Time Selection Management** - Loop points, time selection, grid quantization
 - **Bounce & Render Operations** - Track bouncing, freezing, stem export
 - **Groove & Quantization** - Humanization, swing, polyrhythms, tempo detection
@@ -285,7 +335,6 @@ The REAPER MCP Server implements **600+ tools** across 40+ categories. The numbe
 - Color Management
 - Layout & Screenset Management
 - Script Extension Support
-- And much more
 
 For the complete list of all implemented methods, see [IMPLEMENTATION_MASTER.md](IMPLEMENTATION_MASTER.md).
 
