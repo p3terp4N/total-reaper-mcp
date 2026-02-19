@@ -1,7 +1,9 @@
 # tests/test_song_lookup.py
 """Tests for song lookup / chord parsing (no network required)."""
 
+import json
 import pytest
+from unittest.mock import patch, MagicMock
 
 
 class TestChordParser:
@@ -113,3 +115,114 @@ class TestTempoEstimation:
     def test_estimate_tempo_unknown_genre(self):
         from server.song_lookup import estimate_tempo
         assert estimate_tempo("unknown") == 120  # default
+
+
+class TestUGScraper:
+    """Test Ultimate Guitar scraping with mocked network calls."""
+
+    def _make_search_html(self, results: list) -> str:
+        """Build a fake UG search page with a js-store div."""
+        store_data = {"store": {"page": {"data": {"results": results}}}}
+        escaped = json.dumps(store_data).replace('"', '&quot;')
+        return f'<html><body><div class="js-store" data-content="{escaped}"></div></body></html>'
+
+    def _make_chord_page_html(self, chord_text: str, meta: dict | None = None) -> str:
+        """Build a fake UG chord page with wiki_tab content."""
+        if meta is None:
+            meta = {}
+        store_data = {
+            "store": {
+                "page": {
+                    "data": {
+                        "tab_view": {
+                            "wiki_tab": {"content": chord_text},
+                            "meta": meta,
+                        }
+                    }
+                }
+            }
+        }
+        escaped = json.dumps(store_data).replace('"', '&quot;')
+        return f'<html><body><div class="js-store" data-content="{escaped}"></div></body></html>'
+
+    @patch("server.song_lookup.requests")
+    def test_search_returns_url(self, mock_requests):
+        from server.song_lookup import search_ultimate_guitar
+
+        results = [
+            {"url": "https://tabs.ultimate-guitar.com/tab/artist/song-chords-12345",
+             "type": "Chords", "rating": 4.5, "votes": 100},
+            {"url": "https://tabs.ultimate-guitar.com/tab/artist/song-tab-99999",
+             "type": "Tab", "rating": 4.8, "votes": 200},
+            {"url": "https://tabs.ultimate-guitar.com/tab/artist/song-chords-67890",
+             "type": "Chords", "rating": 3.0, "votes": 50},
+        ]
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = self._make_search_html(results)
+        mock_requests.get.return_value = mock_resp
+
+        url = search_ultimate_guitar("Song", "Artist")
+        assert url == "https://tabs.ultimate-guitar.com/tab/artist/song-chords-12345"
+
+    @patch("server.song_lookup.requests")
+    def test_search_no_results(self, mock_requests):
+        from server.song_lookup import search_ultimate_guitar
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = self._make_search_html([])
+        mock_requests.get.return_value = mock_resp
+
+        url = search_ultimate_guitar("Nonexistent", "Nobody")
+        assert url is None
+
+    @patch("server.song_lookup.requests")
+    def test_scrape_chord_page(self, mock_requests):
+        from server.song_lookup import scrape_ug_chord_page
+
+        chord_content = "[Verse]\\nAm  G  F  E\\n[Chorus]\\nC  G  Am  F"
+        meta = {"tonality": "Am", "bpm": 120}
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = self._make_chord_page_html(chord_content, meta)
+        mock_requests.get.return_value = mock_resp
+
+        text, meta_out = scrape_ug_chord_page("https://tabs.ultimate-guitar.com/tab/test")
+        assert "[Verse]" in text
+        assert "Am" in text
+        assert meta_out["tonality"] == "Am"
+        assert meta_out["bpm"] == 120
+
+    @patch("server.song_lookup.requests")
+    def test_full_lookup_pipeline(self, mock_requests):
+        from server.song_lookup import lookup_song
+
+        # First call: search page
+        search_results = [
+            {"url": "https://tabs.ultimate-guitar.com/tab/artist/song-chords-12345",
+             "type": "Chords", "rating": 4.5, "votes": 100},
+        ]
+        search_resp = MagicMock()
+        search_resp.status_code = 200
+        search_resp.text = self._make_search_html(search_results)
+
+        # Second call: chord page
+        chord_content = "[Verse]\\nAm  G  F  E\\n[Chorus]\\nC  G  Am  F"
+        meta = {"tonality": "Am", "bpm": 95}
+        chord_resp = MagicMock()
+        chord_resp.status_code = 200
+        chord_resp.text = self._make_chord_page_html(chord_content, meta)
+
+        mock_requests.get.side_effect = [search_resp, chord_resp]
+
+        chart = lookup_song("Song", "Artist", bpm=0, genre="rock")
+        assert chart is not None
+        assert chart["title"] == "Song"
+        assert chart["artist"] == "Artist"
+        assert len(chart["sections"]) == 2
+        assert chart["sections"][0]["name"] == "verse"
+        assert chart["sections"][1]["name"] == "chorus"
+        # bpm should come from meta (95), not genre default
+        assert chart["bpm"] == 95

@@ -5,6 +5,7 @@ description = "MCP Server for REAPER DAW"
 requires-python = ">=3.9"
 dependencies = [
     "mcp>=1.1.2",
+    "requests>=2.31.0",
     "uvicorn[standard]>=0.32.1",
     "websockets>=12.0",
 ]

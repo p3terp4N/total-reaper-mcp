@@ -6,8 +6,15 @@ Scrapes chord charts from Ultimate Guitar and Chordify,
 parses them into normalized SongChart dicts for backing track generation.
 """
 
+import json
 import re
 from typing import Optional
+from urllib.parse import quote_plus
+
+try:
+    import requests
+except ModuleNotFoundError:  # pragma: no cover
+    requests = None  # type: ignore[assignment]
 
 
 # ============================================================================
@@ -192,3 +199,129 @@ def detect_key(chords: list[str]) -> str:
 def estimate_tempo(genre: str) -> int:
     """Estimate tempo from genre. Returns 120 as default."""
     return GENRE_TEMPOS.get(genre.lower(), 120)
+
+
+# ============================================================================
+# Ultimate Guitar Scraping
+# ============================================================================
+
+_UG_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+}
+
+_JS_STORE_RE = re.compile(r'class="js-store"\s+data-content="([^"]+)"')
+
+
+def _extract_store_data(html: str) -> Optional[dict]:
+    """Extract the JSON data from UG's js-store div."""
+    match = _JS_STORE_RE.search(html)
+    if not match:
+        return None
+    raw_json = match.group(1).replace("&quot;", '"')
+    try:
+        return json.loads(raw_json)
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
+def search_ultimate_guitar(song: str, artist: str) -> Optional[str]:
+    """Search Ultimate Guitar for a chord tab. Returns the best URL or None."""
+    if requests is None:
+        return None
+
+    query = quote_plus(f"{artist} {song}")
+    url = f"https://www.ultimate-guitar.com/search.php?search_type=title&value={query}"
+    try:
+        resp = requests.get(url, headers=_UG_HEADERS, timeout=10)
+        if resp.status_code != 200:
+            return None
+    except Exception:
+        return None
+
+    data = _extract_store_data(resp.text)
+    if not data:
+        return None
+
+    try:
+        results = data["store"]["page"]["data"]["results"]
+    except (KeyError, TypeError):
+        return None
+
+    # Filter for chord tabs only, sort by rating descending
+    chord_tabs = [r for r in results if r.get("type") == "Chords"]
+    if not chord_tabs:
+        return None
+
+    chord_tabs.sort(key=lambda r: r.get("rating", 0), reverse=True)
+    return chord_tabs[0].get("url")
+
+
+def scrape_ug_chord_page(url: str) -> Optional[tuple[str, dict]]:
+    """Scrape a UG chord page. Returns (chord_text, meta_dict) or None."""
+    if requests is None:
+        return None
+
+    try:
+        resp = requests.get(url, headers=_UG_HEADERS, timeout=10)
+        if resp.status_code != 200:
+            return None
+    except Exception:
+        return None
+
+    data = _extract_store_data(resp.text)
+    if not data:
+        return None
+
+    try:
+        tab_view = data["store"]["page"]["data"]["tab_view"]
+        content = tab_view["wiki_tab"]["content"]
+        meta = tab_view.get("meta", {})
+    except (KeyError, TypeError):
+        return None
+
+    # Clean HTML tags from content
+    content = re.sub(r'<[^>]+>', '', content)
+    # Decode escaped newlines
+    content = content.replace("\\n", "\n")
+
+    return content, meta
+
+
+def lookup_song(
+    song: str,
+    artist: str,
+    bpm: int = 0,
+    genre: str = "",
+) -> Optional[dict]:
+    """Full pipeline: search UG -> scrape -> parse -> return SongChart dict or None."""
+    url = search_ultimate_guitar(song, artist)
+    if not url:
+        return None
+
+    result = scrape_ug_chord_page(url)
+    if not result:
+        return None
+
+    chord_text, meta = result
+
+    # Determine BPM: explicit arg > scraped meta > genre estimate > default
+    if not bpm:
+        bpm = meta.get("bpm", 0)
+    if not bpm and genre:
+        bpm = estimate_tempo(genre)
+
+    # Determine key from scraped metadata
+    key = meta.get("tonality", "")
+
+    chart = parse_chord_chart(
+        chord_text,
+        title=song,
+        artist=artist,
+        bpm=bpm,
+        key=key,
+    )
+    return chart
