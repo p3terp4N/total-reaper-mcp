@@ -1085,7 +1085,8 @@ local function process_request()
                 -- Read and process request
                 local request_data = read_file(numbered_request_file)
                 if request_data then
-                    reaper.ShowConsoleMsg("Processing request " .. i .. ": " .. request_data .. "\n")
+                    -- Silent by default; uncomment for debugging:
+                    -- reaper.ShowConsoleMsg("Processing request " .. i .. ": " .. request_data .. "\n")
                     
                     -- Parse the request
                     local request = decode_json(request_data)
@@ -4380,7 +4381,8 @@ local function process_request()
                     
                     -- Write response
                     local response_json = encode_json(response)
-                    reaper.ShowConsoleMsg("Sending response " .. i .. ": " .. response_json .. "\n")
+                    -- Silent by default; uncomment for debugging:
+                    -- reaper.ShowConsoleMsg("Sending response " .. i .. ": " .. response_json .. "\n")
                     write_file(numbered_response_file, response_json)
                 end
             end
@@ -4401,8 +4403,9 @@ end
 
 -- Main loop
 ensure_dir()
-reaper.ShowConsoleMsg("REAPER MCP Bridge (File-based, Full API) started\n")
-reaper.ShowConsoleMsg("Bridge directory: " .. bridge_dir .. "\n")
+-- Silent startup; errors still print to console
+-- reaper.ShowConsoleMsg("REAPER MCP Bridge (File-based, Full API) started\n")
+-- reaper.ShowConsoleMsg("Bridge directory: " .. bridge_dir .. "\n")
 
 function main()
     process_request()
