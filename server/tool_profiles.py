@@ -86,6 +86,23 @@ TOOL_PROFILES = {
             "FX",  # For adding instruments
             "Rendering & Freezing"  # For bouncing
         ]
+    },
+    "session-template": {
+        "name": "Session Templates",
+        "description": "Session template creation with hardware-specific routing (Tascam/QC/RC-600/BSP/Nektar)",
+        "categories": [
+            "Session Templates",
+            "DSL",
+            "Tracks",
+            "FX",
+            "Routing & Sends",
+            "Bus Routing & Mixing Workflows",
+            "Recording Operations",
+            "MIDI",
+            "Markers",
+            "Transport",
+            "Project",
+        ]
     }
 }
 
