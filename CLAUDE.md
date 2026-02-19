@@ -26,7 +26,17 @@ lua/
     templates/              # 9 session type templates
     actions/                # 28 action scripts (quick_tune, reamp, etc.)
 tests/                      # pytest test suite
+docs/reference/             # REAPER API docs (scraped, for development use)
 ```
+
+## REAPER API Reference
+
+Full API docs are in `docs/reference/`. Use these when adding bridge functions or tools:
+
+- **`reascript-api-v7.60.md`** — Official ReaScript API (function signatures, parameters)
+- **`reascript-api-full-v7.38.md`** — Comprehensive docs including SWS extension functions
+- **`reaper-config-variables.md`** — Config vars for `SNM_GetIntConfigVar`/`SNM_SetIntConfigVar`
+- **`reascript-guide.md`** — ReaScript overview (Lua/EEL2/Python conventions)
 
 ## Running Tests
 
