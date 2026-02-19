@@ -70,3 +70,6 @@ coverage.xml
 *.temp
 /tmp/
 /temp/
+
+# Firecrawl scrape cache
+.firecrawl/
