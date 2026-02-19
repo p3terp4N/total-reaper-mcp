@@ -109,6 +109,7 @@ function guitar_recording.build(session_name, bpm, time_sig, key, sample_rate)
     local guitar_bus = tracks.create_bus({
         name = "Guitar Bus",
         color = colors.gray,
+        volume_db = -6,  -- Headroom for 4 guitar tracks summing
     })
     fx.add_named_chain(guitar_bus, "guitar_bus")
 
@@ -121,24 +122,28 @@ function guitar_recording.build(session_name, bpm, time_sig, key, sample_rate)
     local reverb_plate = tracks.create_bus({
         name = "Reverb Plate",
         color = colors.gray,
+        volume_db = -12,  -- FX returns sit well below dry signal
     })
     fx.add_named_chain(reverb_plate, "reverb_plate")
 
     local reverb_hall = tracks.create_bus({
         name = "Reverb Hall",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(reverb_hall, "reverb_hall")
 
     local delay = tracks.create_bus({
         name = "Delay",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(delay, "delay_main")
 
     local parallel_comp = tracks.create_bus({
         name = "Parallel Comp",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(parallel_comp, "parallel_comp")
 

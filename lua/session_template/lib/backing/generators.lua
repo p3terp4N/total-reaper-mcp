@@ -66,6 +66,8 @@ local INSTRUMENT_CONFIG = {
         fallback       = "MT-PowerDrumKit",
         color          = config.colors.purple or { 128, 0, 255 },
         midi_channel   = 9,   -- GM drums (0-indexed = MIDI channel 10)
+        volume_db      = -3,  -- Drums sit slightly below peak
+        pan            = 0,   -- Center (stereo spread handled by VSTi)
     },
     bass = {
         name_prefix    = "BT - Bass",
@@ -73,6 +75,8 @@ local INSTRUMENT_CONFIG = {
         fallback       = "ReaSynth",
         color          = config.colors.red or { 255, 0, 0 },
         midi_channel   = 0,   -- MIDI channel 1
+        volume_db      = -4,  -- Bass below drums, foundation level
+        pan            = 0,   -- Center (always)
     },
     keys = {
         name_prefix    = "BT - Keys",
@@ -80,6 +84,8 @@ local INSTRUMENT_CONFIG = {
         fallback       = "ReaSynth",
         color          = config.colors.blue or { 0, 128, 255 },
         midi_channel   = 1,   -- MIDI channel 2
+        volume_db      = -8,  -- Keys sit back in the mix
+        pan            = -0.2, -- Slight left (L20)
     },
     guitar = {
         name_prefix    = "BT - Rhythm Guitar",
@@ -87,6 +93,8 @@ local INSTRUMENT_CONFIG = {
         fallback       = "ReaSynth",
         color          = config.colors.orange or { 255, 128, 0 },
         midi_channel   = 3,   -- MIDI channel 4
+        volume_db      = -6,  -- Guitar below drums/bass
+        pan            = 0.2,  -- Slight right (R20) — opposite keys
     },
 }
 
@@ -265,10 +273,12 @@ function generators.build(chart, instruments, style)
             goto continue
         end
 
-        -- Create the instrument track
+        -- Create the instrument track (with gain staging)
         local track = tracks.create({
             name = inst_config.name_prefix,
             color = inst_config.color,
+            volume_db = inst_config.volume_db,
+            pan = inst_config.pan,
         })
         tracks_created = tracks_created + 1
         instrument_tracks[#instrument_tracks + 1] = track
@@ -296,9 +306,11 @@ function generators.build(chart, instruments, style)
     tracks.close_folder()
 
     -- Create a bus track with limiter for the backing mix
+    -- Bus sits at -6dB to provide headroom before the limiter
     local bus = tracks.create_bus({
         name = "BT - Bus",
         color = config.colors.gray or { 128, 128, 128 },
+        volume_db = -6,
     })
     fx.smart_add(bus, "ReaLimit", nil)
 

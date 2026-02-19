@@ -296,24 +296,28 @@ function full_production.build(session_name, bpm, time_sig, key, sample_rate)
     local reverb_plate = tracks.create_bus({
         name = "Reverb Plate",
         color = colors.gray,
+        volume_db = -12,  -- FX returns sit well below dry signal
     })
     fx.add_named_chain(reverb_plate, "reverb_plate")
 
     local reverb_hall = tracks.create_bus({
         name = "Reverb Hall",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(reverb_hall, "reverb_hall")
 
     local delay = tracks.create_bus({
         name = "Delay",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(delay, "delay_main")
 
     local parallel_comp = tracks.create_bus({
         name = "Parallel Comp",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(parallel_comp, "parallel_comp")
 
@@ -323,47 +327,53 @@ function full_production.build(session_name, bpm, time_sig, key, sample_rate)
     -- Buses
     -- ============================
 
-    -- Guitar Bus
+    -- Guitar Bus (4 guitar tracks summing)
     local guitar_bus = tracks.create_bus({
         name = "Guitar Bus",
         color = colors.gray,
+        volume_db = -6,
     })
     fx.add_named_chain(guitar_bus, "guitar_bus")
 
-    -- Bass Bus
+    -- Bass Bus (3 bass tracks summing)
     local bass_bus = tracks.create_bus({
         name = "Bass Bus",
         color = colors.gray,
+        volume_db = -4,
     })
     fx.smart_add_from_config(bass_bus, "eq_surgical")
 
-    -- Drum Bus
+    -- Drum Bus (3 tracks summing)
     local drum_bus = tracks.create_bus({
         name = "Drum Bus",
         color = colors.gray,
+        volume_db = -4,
     })
     fx.smart_add_from_config(drum_bus, "comp_vca65")
     fx.smart_add_from_config(drum_bus, "eq_surgical")
 
-    -- Keys Bus
+    -- Keys Bus (2 tracks summing)
     local keys_bus = tracks.create_bus({
         name = "Keys Bus",
         color = colors.gray,
+        volume_db = -3,
     })
     fx.smart_add_from_config(keys_bus, "eq_surgical")
 
-    -- Vocal Bus
+    -- Vocal Bus (2 tracks summing)
     local vocal_bus = tracks.create_bus({
         name = "Vocal Bus",
         color = colors.gray,
+        volume_db = -3,
     })
     fx.smart_add_from_config(vocal_bus, "comp_vca65")
     fx.smart_add_from_config(vocal_bus, "eq_surgical")
 
-    -- Mix Bus
+    -- Mix Bus (5 buses summing)
     local mix_bus = tracks.create_bus({
         name = "Mix Bus",
         color = colors.gray,
+        volume_db = -6,
     })
     fx.add_named_chain(mix_bus, "mix_bus")
 

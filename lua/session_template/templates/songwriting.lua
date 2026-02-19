@@ -111,6 +111,7 @@ function songwriting.build(session_name, bpm, time_sig, key, sample_rate)
     local reverb = tracks.create_bus({
         name = "Reverb",
         color = colors.gray,
+        volume_db = -12,  -- FX return sits well below dry signal
     })
     fx.smart_add_from_config(reverb, "rev_vintage")
 

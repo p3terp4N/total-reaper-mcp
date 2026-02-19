@@ -26,8 +26,9 @@ end
 -- Track Creation
 -- ============================================================================
 
---- Create a single track with name, color, and optional input.
--- @param opts table {name, color, input, input_stereo, midi_device, midi_channel, rec_arm, rec_mon}
+--- Create a single track with name, color, and optional input/volume/pan.
+-- @param opts table {name, color, input, input_stereo, midi_device, midi_channel,
+--   rec_arm, rec_mon, rec_mode, volume_db, pan}
 -- @return MediaTrack The created track
 function tracks.create(opts)
     opts = opts or {}
@@ -50,6 +51,17 @@ function tracks.create(opts)
             c = utils.color(c)
         end
         reaper.SetMediaTrackInfo_Value(track, "I_CUSTOMCOLOR", c)
+    end
+
+    -- Volume (dB)
+    if opts.volume_db then
+        local vol = 10 ^ (opts.volume_db / 20)
+        reaper.SetMediaTrackInfo_Value(track, "D_VOL", vol)
+    end
+
+    -- Pan (-1.0 = full left, 0 = center, 1.0 = full right)
+    if opts.pan then
+        reaper.SetMediaTrackInfo_Value(track, "D_PAN", opts.pan)
     end
 
     -- Audio input
