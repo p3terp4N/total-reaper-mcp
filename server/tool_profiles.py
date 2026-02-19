@@ -103,7 +103,12 @@ TOOL_PROFILES = {
             "Transport",
             "Project",
         ]
-    }
+    },
+    "backing-track": {
+        "name": "Backing Track Generation",
+        "description": "Generate MIDI backing tracks from song chord charts",
+        "categories": ["Backing Tracks", "MIDI", "Tracks", "FX", "Transport", "Project"],
+    },
 }
 
 def get_profile_categories(profile_name):
