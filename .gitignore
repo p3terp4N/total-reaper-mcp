@@ -11,6 +11,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!lua/session_template/lib/
 lib64/
 parts/
 sdist/

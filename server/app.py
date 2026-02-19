@@ -81,6 +81,7 @@ from .tools.groove_quantization import register_groove_quantization_tools
 from .tools.bus_routing import register_bus_routing_tools
 from .tools.tempo_time_management import register_tempo_time_tools
 from .tools.advanced_midi_generation import register_advanced_midi_tools
+from .tools.session_templates import register_session_template_tools
 
 # Import DSL health check
 from .dsl.health_check import verify_dsl_installation
@@ -130,6 +131,7 @@ CATEGORY_REGISTRY = {
     "Bus Routing & Mixing Workflows": register_bus_routing_tools,
     "Tempo & Time Management": register_tempo_time_tools,
     "Advanced MIDI Generation": register_advanced_midi_tools,
+    "Session Templates": register_session_template_tools,
 }
 
 def register_tools_by_profile(profile_name):

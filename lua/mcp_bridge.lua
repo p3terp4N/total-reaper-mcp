@@ -668,6 +668,191 @@ local function GetTimeSignature()
     return {ok = true, numerator = num, denominator = denom}
 end
 
+-- ============================================================================
+-- Session Template DSL Functions
+-- ============================================================================
+
+-- Path to session_template lib (relative to REAPER Scripts)
+local session_template_path = reaper.GetResourcePath() .. "/Scripts/SessionTemplate/"
+
+local function GetSessionConfig(section)
+    -- Load config from session template lib
+    local config_path = session_template_path .. "lib/config.lua"
+    local f = io.open(config_path, "r")
+    if not f then
+        return {ok = false, error = "Config not found at: " .. config_path}
+    end
+    f:close()
+
+    -- Load the config module
+    local old_path = package.path
+    package.path = session_template_path .. "lib/?.lua;" .. package.path
+    local ok_load, config = pcall(require, "config")
+    package.path = old_path
+
+    if not ok_load then
+        return {ok = false, error = "Failed to load config: " .. tostring(config)}
+    end
+
+    section = section or "all"
+    if section == "all" then
+        return {ok = true, ret = config}
+    elseif config[section] then
+        return {ok = true, ret = config[section]}
+    else
+        return {ok = false, error = "Unknown config section: " .. section}
+    end
+end
+
+local function ScanPlugins()
+    -- Load plugins module and scan all configured plugins
+    local old_path = package.path
+    package.path = session_template_path .. "lib/?.lua;" .. package.path
+    local ok_load, plugins_mod = pcall(require, "plugins")
+    if not ok_load then
+        package.path = old_path
+        return {ok = false, error = "Failed to load plugins module: " .. tostring(plugins_mod)}
+    end
+    local ok_cfg, config = pcall(require, "config")
+    package.path = old_path
+    if not ok_cfg then
+        return {ok = false, error = "Failed to load config: " .. tostring(config)}
+    end
+
+    local report = plugins_mod.scan_all(config.plugins)
+    return {ok = true, ret = report}
+end
+
+local function SmartAddFX(track_index, preferred, fallback, bypassed)
+    -- Add FX with preferred/fallback resolution
+    local track = reaper.GetTrack(0, track_index)
+    if not track then
+        return {ok = false, error = "Track not found at index: " .. tostring(track_index)}
+    end
+
+    local old_path = package.path
+    package.path = session_template_path .. "lib/?.lua;" .. package.path
+    local ok_load, plugins_mod = pcall(require, "plugins")
+    package.path = old_path
+    if not ok_load then
+        return {ok = false, error = "Failed to load plugins module"}
+    end
+
+    local plugin_name = plugins_mod.resolve(preferred, fallback)
+    if not plugin_name then
+        return {ok = false, error = "Neither preferred (" .. tostring(preferred) .. ") nor fallback (" .. tostring(fallback) .. ") is available"}
+    end
+
+    local fx_idx = reaper.TrackFX_AddByName(track, plugin_name, false, -1)
+    if fx_idx < 0 then
+        return {ok = false, error = "Failed to add plugin: " .. plugin_name}
+    end
+
+    if bypassed then
+        reaper.TrackFX_SetEnabled(track, fx_idx, false)
+    end
+
+    return {ok = true, ret = {plugin = plugin_name, fx_index = fx_idx, bypassed = bypassed or false}}
+end
+
+local function CreateSession(session_type, session_name, bpm, time_sig, key, sample_rate)
+    -- Load and execute a session template
+    local old_path = package.path
+    package.path = session_template_path .. "lib/?.lua;" .. session_template_path .. "templates/?.lua;" .. package.path
+
+    local ok_tmpl, template = pcall(require, session_type)
+    if not ok_tmpl then
+        -- Try common aliases
+        local aliases = {
+            guitar = "guitar_recording",
+            production = "full_production",
+            jam = "jam_loop",
+            tone = "tone_design",
+            live = "live_performance",
+        }
+        if aliases[session_type] then
+            ok_tmpl, template = pcall(require, aliases[session_type])
+        end
+    end
+    package.path = old_path
+
+    if not ok_tmpl then
+        return {ok = false, error = "Unknown session type: " .. tostring(session_type) .. " — " .. tostring(template)}
+    end
+
+    if type(template.build) ~= "function" then
+        return {ok = false, error = "Template '" .. session_type .. "' has no build() function"}
+    end
+
+    -- Parse time signature
+    local ts_num, ts_denom = 4, 4
+    if time_sig and time_sig:find("/") then
+        ts_num, ts_denom = time_sig:match("(%d+)/(%d+)")
+        ts_num = tonumber(ts_num) or 4
+        ts_denom = tonumber(ts_denom) or 4
+    end
+
+    reaper.Undo_BeginBlock()
+    reaper.PreventUIRefresh(1)
+
+    local ok_build, err = pcall(template.build, session_name, bpm or 120, {ts_num, ts_denom}, key or "", sample_rate or 48000)
+
+    reaper.PreventUIRefresh(-1)
+    reaper.Undo_EndBlock("Create Session: " .. (session_name or "Untitled"), -1)
+    reaper.TrackList_AdjustWindows(false)
+    reaper.UpdateArrange()
+
+    if not ok_build then
+        return {ok = false, error = "Template build failed: " .. tostring(err)}
+    end
+
+    return {ok = true, ret = {session_type = session_type, session_name = session_name, bpm = bpm}}
+end
+
+-- Session Template Action Proxies
+-- Execute action scripts from the session template system via the bridge.
+local function RunSessionAction(action_name)
+    local actions_dir = session_template_path .. "actions/"
+    local script_path = actions_dir .. action_name .. ".lua"
+    local f = io.open(script_path, "r")
+    if not f then
+        return {ok = false, error = "Action script not found: " .. script_path}
+    end
+    f:close()
+
+    local ok, err = pcall(dofile, script_path)
+    if ok then
+        return {ok = true, ret = {action = action_name}}
+    else
+        return {ok = false, error = "Action failed: " .. tostring(err)}
+    end
+end
+
+local function AddMonitorFX(plugin_name, bypassed)
+    local master = reaper.GetMasterTrack(0)
+    if not master then
+        return {ok = false, error = "Could not get master track"}
+    end
+    local fx_idx = reaper.TrackFX_AddByName(master, plugin_name, false, -1 + 0x1000000)
+    if fx_idx < 0 then
+        return {ok = false, error = "Failed to add monitor FX: " .. tostring(plugin_name)}
+    end
+    if bypassed then
+        reaper.TrackFX_SetEnabled(master, fx_idx + 0x1000000, false)
+    end
+    return {ok = true, ret = {plugin = plugin_name, fx_index = fx_idx, bypassed = bypassed or false}}
+end
+
+local function GetSetProjectGrid(set, division)
+    if set then
+        reaper.GetSetProjectGrid(0, true, division)
+        return {ok = true}
+    else
+        local _, div = reaper.GetSetProjectGrid(0, false)
+        return {ok = true, ret = {division = div}}
+    end
+end
+
 -- Export function table for DSL
 DSL_FUNCTIONS = {
     -- Track info
@@ -707,7 +892,16 @@ DSL_FUNCTIONS = {
     Stop = Stop,
     GetTempo = GetTempo,
     SetTempo = SetTempo,
-    GetTimeSignature = GetTimeSignature
+    GetTimeSignature = GetTimeSignature,
+
+    -- Session Templates
+    GetSessionConfig = GetSessionConfig,
+    ScanPlugins = ScanPlugins,
+    SmartAddFX = SmartAddFX,
+    CreateSession = CreateSession,
+    AddMonitorFX = AddMonitorFX,
+    GetSetProjectGrid = GetSetProjectGrid,
+    RunSessionAction = RunSessionAction,
 }
 
 -- Main processing function
