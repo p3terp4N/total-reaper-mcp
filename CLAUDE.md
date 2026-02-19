@@ -37,10 +37,11 @@ Full API docs are in `docs/reference/`. Use these when adding bridge functions o
 - **`reascript-api-full-v7.38.md`** — Comprehensive docs including SWS extension functions
 - **`reaper-config-variables.md`** — Config vars for `SNM_GetIntConfigVar`/`SNM_SetIntConfigVar`
 - **`reascript-guide.md`** — ReaScript overview (Lua/EEL2/Python conventions)
+- **`reaper-operations-guide.md`** — Practical REAPER operations (Actions window UI, loading scripts, key bindings, menus, SWS/ReaPack, troubleshooting)
 
 ## Running Tests
 
-REAPER is not installed. All tests run with mocks.
+REAPER is installed. Tests still use mocks (no REAPER connection needed).
 
 ```bash
 # All tests (68 total, no REAPER needed)
