@@ -853,6 +853,50 @@ local function GetSetProjectGrid(set, division)
     end
 end
 
+-- Backing Track Generation
+local function GenerateBackingTrack(chart_json, instruments, style)
+    local old_path = package.path
+    package.path = session_template_path .. "lib/?.lua;" .. session_template_path .. "lib/backing/?.lua;" .. package.path
+
+    local ok_gen, generators_mod = pcall(require, "generators")
+    package.path = old_path
+
+    if not ok_gen then
+        return {ok = false, error = "Failed to load generators: " .. tostring(generators_mod)}
+    end
+
+    -- chart_json comes as a table from the bridge (already decoded from JSON)
+    local chart = chart_json
+    if type(chart_json) == "string" then
+        -- If string, try to evaluate as Lua table
+        local fn = load("return " .. chart_json)
+        if fn then
+            local ok, decoded = pcall(fn)
+            if ok then chart = decoded end
+        end
+    end
+
+    if type(chart) ~= "table" then
+        return {ok = false, error = "Invalid chart data"}
+    end
+
+    reaper.Undo_BeginBlock()
+    reaper.PreventUIRefresh(1)
+
+    local ok_build, result = pcall(generators_mod.build, chart, instruments, style)
+
+    reaper.PreventUIRefresh(-1)
+    reaper.Undo_EndBlock("Generate Backing Track", -1)
+    reaper.TrackList_AdjustWindows(false)
+    reaper.UpdateArrange()
+
+    if not ok_build then
+        return {ok = false, error = "Generation failed: " .. tostring(result)}
+    end
+
+    return {ok = true, ret = result}
+end
+
 -- Export function table for DSL
 DSL_FUNCTIONS = {
     -- Track info
@@ -902,6 +946,9 @@ DSL_FUNCTIONS = {
     AddMonitorFX = AddMonitorFX,
     GetSetProjectGrid = GetSetProjectGrid,
     RunSessionAction = RunSessionAction,
+
+    -- Backing Tracks
+    GenerateBackingTrack = GenerateBackingTrack,
 }
 
 -- Main processing function

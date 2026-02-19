@@ -129,6 +129,11 @@ STATIC_CONFIG = {
         "tuner": {"preferred": "ReaTune", "fallback": None},
         "gate": {"preferred": "ReaGate", "fallback": None},
         "gain": {"preferred": "ReaGain", "fallback": None},
+        # Backing Track VSTi
+        "drums_vsti": {"preferred": "Addictive Drums 2", "fallback": "MT-PowerDrumKit"},
+        "bass_vsti": {"preferred": "Kontakt", "fallback": "ReaSynth"},
+        "keys_vsti": {"preferred": "Analog Lab V", "fallback": "ReaSynth"},
+        "guitar_vsti": {"preferred": "Ample Guitar", "fallback": "ReaSynth"},
     },
     "colors": {
         "green": [76, 175, 80],
