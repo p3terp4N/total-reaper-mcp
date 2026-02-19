@@ -83,6 +83,7 @@ function podcast.build(session_name, bpm, time_sig, key, sample_rate)
     local podcast_bus = tracks.create_bus({
         name = "Podcast Bus",
         color = colors.gray,
+        volume_db = -4,  -- Headroom for 3 sources summing (host + guest + sfx)
     })
     fx.add_named_chain(podcast_bus, "podcast_bus") -- comp → eq → limit
 

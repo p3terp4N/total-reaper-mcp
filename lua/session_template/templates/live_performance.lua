@@ -72,10 +72,11 @@ function live_performance.build(session_name, bpm, time_sig, key, sample_rate)
     })
     fx.add_named_chain(vocal, "live_vocal")
 
-    -- Backing Tracks
+    -- Backing Tracks (sit below live instruments)
     local backing = tracks.create({
         name = "Backing Tracks",
         color = colors.yellow,
+        volume_db = -6,
     })
     fx.smart_add_from_config(backing, "gain")
 
@@ -83,6 +84,7 @@ function live_performance.build(session_name, bpm, time_sig, key, sample_rate)
     local click = tracks.create({
         name = "Click",
         color = colors.gray,
+        volume_db = -6,
     })
     tracks.disable_master_send(click)
     -- Note: Click routing to headphone output requires hardware-specific
@@ -95,11 +97,12 @@ function live_performance.build(session_name, bpm, time_sig, key, sample_rate)
         color = colors.red,
     })
 
-    -- Live Capture (receives from all, always armed)
+    -- Live Capture (receives pre-fader from all, always armed)
     local live_capture = tracks.create({
         name = "Live Capture",
         color = colors.white,
         rec_arm = true,
+        volume_db = -6,  -- Headroom for 5 audio tracks summing
     })
     local audio_tracks = { di1, qc, rc600, vocal, backing }
     tracks.setup_capture_bus(live_capture, audio_tracks)

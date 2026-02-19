@@ -103,24 +103,28 @@ function mixing.build(session_name, bpm, time_sig, key, sample_rate)
     local reverb_room = tracks.create({
         name = "Reverb Room",
         color = colors.gray,
+        volume_db = -12,  -- FX returns sit well below dry signal
     })
     fx.add_named_chain(reverb_room, "mix_reverb_room")
 
     local reverb_hall = tracks.create({
         name = "Reverb Hall",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(reverb_hall, "mix_reverb_hall")
 
     local delay = tracks.create({
         name = "Delay",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(delay, "mix_delay")
 
     local parallel_comp = tracks.create({
         name = "Parallel Comp",
         color = colors.gray,
+        volume_db = -12,
     })
     fx.add_named_chain(parallel_comp, "mix_parallel")
 
@@ -132,30 +136,35 @@ function mixing.build(session_name, bpm, time_sig, key, sample_rate)
     local guitar_bus = tracks.create_bus({
         name = "Guitar Bus",
         color = colors.gray,
+        volume_db = -6,  -- Headroom for multiple guitar stems
     })
     fx.add_named_chain(guitar_bus, "mix_guitar_bus")
 
     local bass_bus = tracks.create_bus({
         name = "Bass Bus",
         color = colors.gray,
+        volume_db = -4,
     })
     fx.add_named_chain(bass_bus, "mix_bass_bus")
 
     local drum_bus = tracks.create_bus({
         name = "Drum Bus",
         color = colors.gray,
+        volume_db = -4,
     })
     fx.add_named_chain(drum_bus, "mix_drum_bus")
 
     local keys_bus = tracks.create_bus({
         name = "Keys Bus",
         color = colors.gray,
+        volume_db = -3,
     })
     fx.add_named_chain(keys_bus, "mix_keys_bus")
 
     local vocal_bus = tracks.create_bus({
         name = "Vocal Bus",
         color = colors.gray,
+        volume_db = -3,
     })
     fx.add_named_chain(vocal_bus, "mix_vocal_bus")
 
@@ -165,6 +174,7 @@ function mixing.build(session_name, bpm, time_sig, key, sample_rate)
     local mix_bus = tracks.create_bus({
         name = "Mix Bus",
         color = colors.gray,
+        volume_db = -6,  -- Headroom for 5 buses summing
     })
     fx.add_named_chain(mix_bus, "mix_master")
 
