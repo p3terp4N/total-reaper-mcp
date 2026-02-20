@@ -763,13 +763,17 @@ def register_dsl_tools(mcp):
                 return f"Created region '{name}' from {int(start) if start == int(start) else start} to {int(end) if end == int(end) else end} seconds"
                 
             elif action == "go_to":
-                from server.tools.markers import go_to_marker
-                
                 if not name:
                     raise ValueError("Marker name required for go_to action")
-                
-                # Find and go to the marker
-                await go_to_marker(0, False, name)  # 0=name search, False=not region
+
+                # Find marker by name using DSL function (returns position)
+                find_result = await bridge.call_lua("FindMarker", [name])
+                if not find_result.get("ok") or not find_result.get("found"):
+                    raise ValueError(f"Marker '{name}' not found")
+
+                marker_pos = find_result.get("position", 0.0)
+                # Move edit cursor to marker position
+                await bridge.call_lua("SetEditCurPos", [marker_pos, True, False])
                 return f"Moved to marker '{name}'"
                 
             elif action == "delete":

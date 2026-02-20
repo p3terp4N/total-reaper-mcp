@@ -5,7 +5,7 @@
 reaper.ShowConsoleMsg("Reloading MCP Bridge...\n")
 
 -- Path to the bridge script
-local bridge_path = reaper.GetResourcePath() .. "/Scripts/mcp_bridge_file_v2.lua"
+local bridge_path = reaper.GetResourcePath() .. "/Scripts/mcp_bridge.lua"
 
 -- Check if file exists
 local file = io.open(bridge_path, "r")

@@ -287,19 +287,43 @@ async def _get_track_info(bridge, index: int) -> Optional[TrackRef]:
     
     return track
 
+def _segment_match(pattern: str, track_name: str) -> bool:
+    """Check if pattern matches the start of any segment in the track name.
+
+    Segments are split by ' - ' first (preserving compounds like 'Hi-Hat'),
+    then by space and underscore. The pattern must match at the START of a
+    segment to avoid false positives like 'hat' matching 'Hi-Hat'.
+    """
+    # Split by ' - ' first to preserve compound words like "Hi-Hat"
+    primary_segments = track_name.split(' - ')
+    # Further split each segment by space and underscore
+    all_segments = []
+    for seg in primary_segments:
+        for part in re.split(r'[ _]', seg.strip()):
+            if part:
+                all_segments.append(part)
+
+    # Check if pattern matches the start of any segment (case-insensitive)
+    pattern_lower = pattern.lower()
+    for seg in all_segments:
+        if seg.lower().startswith(pattern_lower):
+            return True
+    return False
+
+
 async def resolve_tracks_pattern(bridge, pattern: str) -> List[TrackRef]:
     """
     Resolve a track pattern like "all drums", "all vocals", "guitars"
-    
+
     Returns a list of tracks that match the pattern
     """
     tracks = []
-    
+
     # Extract the pattern keyword
     pattern = pattern.lower().strip()
     if pattern.startswith('all '):
         pattern = pattern[4:]  # Remove 'all '
-    
+
     # Define role patterns
     role_patterns = {
         'drums': ['drum', 'kick', 'snare', 'hat', 'tom', 'cymbal', 'perc'],
@@ -312,23 +336,22 @@ async def resolve_tracks_pattern(bridge, pattern: str) -> List[TrackRef]:
         'keys': ['piano', 'keys', 'synth', 'organ', 'keyboard'],
         'strings': ['strings', 'violin', 'viola', 'cello', 'orchestra']
     }
-    
+
     # Get patterns to search for
     search_patterns = role_patterns.get(pattern, [pattern])
-    
+
     # Get all tracks
     track_count = await _get_track_count(bridge)
-    
+
     for i in range(track_count):
         track_info = await _get_track_info(bridge, i)
         if track_info:
-            track_name = track_info.name.lower()
-            # Check if any pattern matches
+            # Check if any pattern matches using word-boundary matching
             for p in search_patterns:
-                if p in track_name:
+                if _segment_match(p, track_info.name):
                     tracks.append(track_info)
                     break
-    
+
     return tracks
 
 async def resolve_time(bridge, selector: Union[str, float, Dict[str, Any]]) -> TimeRef:

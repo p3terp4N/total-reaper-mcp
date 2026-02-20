@@ -20,7 +20,19 @@ local function encode_json(v)
     elseif type(v) == "number" then
         return tostring(v)
     elseif type(v) == "string" then
-        return string.format('"%s"', v:gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'))
+        local s = v
+        s = s:gsub('\\', '\\\\')     -- backslash first
+        s = s:gsub('"', '\\"')        -- quotes
+        s = s:gsub('\n', '\\n')       -- newline
+        s = s:gsub('\r', '\\r')       -- carriage return
+        s = s:gsub('\t', '\\t')       -- tab
+        s = s:gsub('\b', '\\b')       -- backspace
+        s = s:gsub('\f', '\\f')       -- form feed
+        -- Remaining control chars (\x00-\x07, \x0b, \x0e-\x1f) as \uXXXX
+        s = s:gsub('[\x00-\x07\x0b\x0e-\x1f]', function(c)
+            return string.format('\\u%04x', string.byte(c))
+        end)
+        return '"' .. s .. '"'
     elseif type(v) == "table" then
         local parts = {}
         local is_array = #v > 0
@@ -675,6 +687,22 @@ end
 -- Path to session_template lib (relative to REAPER Scripts)
 local session_template_path = reaper.GetResourcePath() .. "/Scripts/SessionTemplate/"
 
+-- Clear cached modules on bridge load/reload so require() picks up changes
+local function clear_module_cache()
+    local modules = {
+        "config", "plugins", "tracks", "fx", "utils", "generators",
+        "backing.drums", "backing.bass", "backing.keys", "backing.guitar",
+        "guitar", "production", "songwriting", "jam", "podcast",
+        "mixing", "tone", "live", "transcription",
+        "guitar_recording", "full_production", "jam_loop",
+        "tone_design", "live_performance",
+    }
+    for _, mod in ipairs(modules) do
+        package.loaded[mod] = nil
+    end
+end
+clear_module_cache()
+
 local function GetSessionConfig(section)
     -- Load config from session template lib
     local config_path = session_template_path .. "lib/config.lua"
@@ -1070,6 +1098,43 @@ DSL_FUNCTIONS = {
     -- Backing Tracks
     GenerateBackingTrack = GenerateBackingTrack,
     RegeneratePart = RegeneratePart,
+
+    -- Compound envelope operations (avoids userdata crossing bridge)
+    InsertEnvelopePointByName = function(track_index, envelope_name, time, value, shape, tension, selected, no_sort)
+        local track = nil
+        if track_index == -1 then
+            track = reaper.GetMasterTrack(0)
+        else
+            track = reaper.GetTrack(0, track_index)
+        end
+        if not track then
+            return {ok = false, error = "Track not found at index " .. tostring(track_index)}
+        end
+        local envelope = reaper.GetTrackEnvelopeByName(track, envelope_name)
+        if not envelope then
+            return {ok = false, error = "Envelope '" .. tostring(envelope_name) .. "' not found on track " .. tostring(track_index)}
+        end
+        local result = reaper.InsertEnvelopePoint(envelope, time or 0, value or 0, shape or 0, tension or 0, selected or false, no_sort or false)
+        return {ok = result, ret = result}
+    end,
+
+    CountEnvelopePointsByName = function(track_index, envelope_name)
+        local track = nil
+        if track_index == -1 then
+            track = reaper.GetMasterTrack(0)
+        else
+            track = reaper.GetTrack(0, track_index)
+        end
+        if not track then
+            return {ok = false, error = "Track not found at index " .. tostring(track_index)}
+        end
+        local envelope = reaper.GetTrackEnvelopeByName(track, envelope_name)
+        if not envelope then
+            return {ok = false, error = "Envelope '" .. tostring(envelope_name) .. "' not found on track " .. tostring(track_index)}
+        end
+        local count = reaper.CountEnvelopePoints(envelope)
+        return {ok = true, ret = count}
+    end,
 }
 
 -- Main processing function

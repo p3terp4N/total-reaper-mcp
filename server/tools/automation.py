@@ -52,17 +52,11 @@ async def get_track_envelope_by_name(track_index: int, envelope_name: str) -> st
 
 async def count_envelope_points(track_index: int, envelope_name: str) -> str:
     """Count the number of points in an envelope"""
-    # Get envelope - pass track index directly
-    env_result = await bridge.call_lua("GetTrackEnvelopeByName", [track_index, envelope_name])
-    
-    if not env_result.get("ok") or not env_result.get("ret"):
-        raise Exception(f"Failed to find envelope '{envelope_name}' on track {track_index}")
-    
-    envelope_handle = env_result.get("ret")
-    
-    # Count points
-    result = await bridge.call_lua("CountEnvelopePoints", [envelope_handle])
-    
+    track_index = int(track_index)
+
+    # Use compound DSL function to avoid userdata crossing the bridge
+    result = await bridge.call_lua("CountEnvelopePointsByName", [track_index, envelope_name])
+
     if result.get("ok"):
         count = result.get("ret", 0)
         return f"Envelope '{envelope_name}' has {count} points"
@@ -73,19 +67,17 @@ async def count_envelope_points(track_index: int, envelope_name: str) -> str:
 async def insert_envelope_point(track_index: int, envelope_name: str, time: float, value: float,
                                shape: int = 0, selected: bool = False) -> str:
     """Insert an automation point in an envelope"""
-    # Get envelope - pass track index directly
-    env_result = await bridge.call_lua("GetTrackEnvelopeByName", [track_index, envelope_name])
-    
-    if not env_result.get("ok") or not env_result.get("ret"):
-        raise Exception(f"Failed to find envelope '{envelope_name}' on track {track_index}")
-    
-    envelope_handle = env_result.get("ret")
-    
-    # Insert point
-    result = await bridge.call_lua("InsertEnvelopePoint", [
-        envelope_handle, time, value, shape, 0, selected, True
+    # Force track_index to be an integer
+    if isinstance(track_index, dict) and '__ptr' in track_index:
+        raise ValueError(f"Received track handle instead of track index: {track_index}")
+
+    track_index = int(track_index)
+
+    # Use compound DSL function to avoid userdata crossing the bridge
+    result = await bridge.call_lua("InsertEnvelopePointByName", [
+        track_index, envelope_name, time, value, shape, 0, selected, True
     ])
-    
+
     if result.get("ok"):
         return f"Inserted point at {time:.3f}s with value {value:.3f} in '{envelope_name}' envelope"
     else:
