@@ -41,20 +41,34 @@ Full API docs are in `docs/reference/`. Use these when adding bridge functions o
 
 ## Running Tests
 
-REAPER is installed. Tests still use mocks (no REAPER connection needed).
+The `--noconftest` flag is required because `tests/conftest.py` imports `mcp` which isn't installed in the system Python. The venv at `.venv/` has a stale interpreter path (from upstream author). Use `python3.13` directly.
+
+### Mock tests (no REAPER needed, 68 tests)
 
 ```bash
-# All tests (68 total, no REAPER needed)
 python3.13 -m pytest tests/test_backing_tracks.py tests/test_song_lookup.py tests/test_session_templates.py -v --noconftest
-
-# Backing track + song lookup tests (48 tests)
-python3.13 -m pytest tests/test_backing_tracks.py tests/test_song_lookup.py -v --noconftest
-
-# Session template tests (20 tests, no REAPER needed)
-python3.13 -m pytest tests/test_session_templates.py -v --noconftest
 ```
 
-The `--noconftest` flag is required because `tests/conftest.py` imports `mcp` which isn't installed in the system Python. The venv at `.venv/` has a stale interpreter path (from upstream author). Use `python3.13` directly.
+### Live tests (require REAPER running with bridge, 268 tests)
+
+Run **one suite at a time** — the file bridge can only handle one test suite's requests. Never run live suites in parallel.
+
+```bash
+# Bridge integration — 39 tests, DSL functions + raw REAPER API
+python3.13 -m pytest tests/test_bridge_integration_live.py -v --noconftest
+
+# DSL comprehensive — 66 tests, all 46 DSL tools
+python3.13 -m pytest tests/test_dsl_comprehensive.py -v --noconftest
+
+# Actions — 57 tests, all 21+ action scripts
+python3.13 -m pytest tests/test_actions_live.py -v --noconftest
+
+# Session templates — 80 tests, all 9 templates with detail assertions
+python3.13 -m pytest tests/test_templates_live.py -v --noconftest
+
+# Backing tracks — 26 tests, all genres × instruments + regeneration
+python3.13 -m pytest tests/test_backing_live.py -v --noconftest
+```
 
 ## Tool Profiles
 
