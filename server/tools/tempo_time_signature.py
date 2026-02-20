@@ -52,8 +52,10 @@ async def set_project_tempo(tempo: float, position: Optional[float] = None) -> s
         else:
             raise Exception(f"Failed to set tempo: {result.get('error', 'Unknown error')}")
     else:
-        # Set master project tempo
-        result = await bridge.call_lua("CSurf_OnTempoChange", [tempo])
+        # Set master project tempo by modifying marker 0
+        result = await bridge.call_lua("SetTempoTimeSigMarker", [
+            0, 0, 0, -1, -1, tempo, 0, 0, False
+        ])
         if result.get("ok"):
             return f"Set tempo to {tempo:.2f} BPM"
         else:

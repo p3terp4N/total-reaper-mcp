@@ -318,19 +318,19 @@ class TestTransport:
         assert result_stop["ok"]
 
     async def test_tempo_roundtrip(self):
-        """CSurf_OnTempoChange then GetTempo should reflect the new BPM."""
+        """SetTempoTimeSigMarker(marker 0) then GetTempo should reflect the new BPM."""
         original = await call("GetTempo")
         assert original["ok"]
         original_bpm = original["ret"]
 
-        await call("CSurf_OnTempoChange", [140])
+        await call("SetTempoTimeSigMarker", [0, 0, 0, -1, -1, 140, 0, 0, False])
 
         result = await call("GetTempo")
         assert result["ok"]
         assert abs(result["ret"] - 140) < 0.1
 
         # Restore the original tempo.
-        await call("CSurf_OnTempoChange", [original_bpm])
+        await call("SetTempoTimeSigMarker", [0, 0, 0, -1, -1, original_bpm, 0, 0, False])
 
     async def test_get_time_signature(self):
         """GetTimeSignature should succeed."""

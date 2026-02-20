@@ -271,18 +271,18 @@ class TestTransport:
         assert result["ok"]
 
     async def test_set_tempo(self):
-        """DSL: dsl_set_tempo -- CSurf_OnTempoChange + GetTempo round-trip."""
+        """DSL: dsl_set_tempo -- SetTempoTimeSigMarker(marker 0) + GetTempo round-trip."""
         original = await call("GetTempo")
         assert original["ok"]
         original_bpm = original["ret"]
 
-        await call("CSurf_OnTempoChange", [135])
+        await call("SetTempoTimeSigMarker", [0, 0, 0, -1, -1, 135, 0, 0, False])
         result = await call("GetTempo")
         assert result["ok"]
         assert abs(result["ret"] - 135) < 0.1
 
         # Restore original tempo.
-        await call("CSurf_OnTempoChange", [original_bpm])
+        await call("SetTempoTimeSigMarker", [0, 0, 0, -1, -1, original_bpm, 0, 0, False])
 
 
 # ===================================================================
