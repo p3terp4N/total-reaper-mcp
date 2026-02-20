@@ -237,6 +237,10 @@ function generators.build(chart, instruments, style)
     instruments = instruments or { "drums", "bass" }
     style = style or "rock"
 
+    -- Reset the track insert position to current track count so new tracks
+    -- are appended after any existing ones (avoids stale _insert_pos)
+    tracks.reset()
+
     -- Calculate total song length in beats and seconds
     local total_beats = 0
     for _, section in ipairs(chart.sections) do

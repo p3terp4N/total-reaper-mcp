@@ -76,7 +76,7 @@ class ReaperFileBridge:
             
             # Wait for response (with timeout)
             start_time = asyncio.get_event_loop().time()
-            timeout = 5.0  # 5 second timeout
+            timeout = 15.0  # 15 second timeout (needs headroom for VSTi loading)
             
             while asyncio.get_event_loop().time() - start_time < timeout:
                 if response_file.exists():
