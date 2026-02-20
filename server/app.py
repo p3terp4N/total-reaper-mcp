@@ -83,6 +83,7 @@ from .tools.tempo_time_management import register_tempo_time_tools
 from .tools.advanced_midi_generation import register_advanced_midi_tools
 from .tools.session_templates import register_session_template_tools
 from .tools.backing_tracks import register_backing_track_tools
+from .tools.neural_dsp import register_neural_dsp_tools
 
 # Import DSL health check
 from .dsl.health_check import verify_dsl_installation
@@ -134,6 +135,7 @@ CATEGORY_REGISTRY = {
     "Advanced MIDI Generation": register_advanced_midi_tools,
     "Session Templates": register_session_template_tools,
     "Backing Tracks": register_backing_track_tools,
+    "Neural DSP": register_neural_dsp_tools,
 }
 
 def register_tools_by_profile(profile_name):
