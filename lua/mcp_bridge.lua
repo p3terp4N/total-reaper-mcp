@@ -671,9 +671,13 @@ local function GetTempo()
 end
 
 local function SetTempo(bpm)
-    -- Modify tempo marker 0 (always exists). CSurf_OnTempoChange only
-    -- lasts one defer cycle — tempo markers override it back.
-    reaper.SetTempoTimeSigMarker(0, 0, 0, -1, -1, bpm, 0, 0, false)
+    -- CSurf_OnTempoChange only lasts one defer cycle — markers override it.
+    local count = reaper.CountTempoTimeSigMarkers(0)
+    if count > 0 then
+        reaper.SetTempoTimeSigMarker(0, 0, 0, -1, -1, bpm, 0, 0, false)
+    else
+        reaper.SetTempoTimeSigMarker(0, -1, 0, -1, -1, bpm, 0, 0, false)
+    end
     reaper.UpdateTimeline()
     local new_tempo = reaper.Master_GetTempo()
     return {ok = true, ret = new_tempo}
