@@ -2,7 +2,7 @@
 -- Called via RunSessionAction("clear_cache") to force reload on next require()
 
 local modules = {
-    "config", "plugins", "tracks", "fx", "utils", "generators",
+    "config", "plugins", "tracks", "fx", "utils", "project", "generators",
     "backing.drums", "backing.bass", "backing.keys", "backing.guitar",
     "guitar", "production", "songwriting", "jam", "podcast",
     "mixing", "tone", "live", "transcription",

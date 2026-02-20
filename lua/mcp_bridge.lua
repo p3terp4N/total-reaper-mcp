@@ -691,7 +691,7 @@ local session_template_path = reaper.GetResourcePath() .. "/Scripts/SessionTempl
 -- Clear cached modules on bridge load/reload so require() picks up changes
 local function clear_module_cache()
     local modules = {
-        "config", "plugins", "tracks", "fx", "utils", "generators",
+        "config", "plugins", "tracks", "fx", "utils", "project", "generators",
         "backing.drums", "backing.bass", "backing.keys", "backing.guitar",
         "guitar", "production", "songwriting", "jam", "podcast",
         "mixing", "tone", "live", "transcription",
@@ -785,6 +785,15 @@ local function SmartAddFX(track_index, preferred, fallback, bypassed)
 end
 
 local function CreateSession(session_type, session_name, bpm, time_sig, key, sample_rate)
+    -- Clear cached modules so require() picks up latest code
+    clear_module_cache()
+
+    -- Remove all tempo/time-sig markers from previous sessions
+    local num_markers = reaper.CountTempoTimeSigMarkers(0)
+    for i = num_markers - 1, 0, -1 do
+        reaper.DeleteTempoTimeSigMarker(0, i)
+    end
+
     -- Load and execute a session template
     local old_path = package.path
     package.path = session_template_path .. "lib/?.lua;" .. session_template_path .. "templates/?.lua;" .. package.path
