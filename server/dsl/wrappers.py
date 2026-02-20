@@ -572,8 +572,9 @@ async def transport_set_tempo(bridge, bpm: float) -> OperationResult:
         result = await bridge.call_lua("GetTempo", [])
         old_tempo = result.get("ret", 120.0) if result.get("ok") else 120.0
         
-        # Set new tempo
-        result = await bridge.call_lua("SetTempo", [bpm])
+        # Set new tempo via raw REAPER API (CSurf_OnTempoChange is reliable;
+        # the DSL SetTempo wrapper may be stale in Lua memory)
+        result = await bridge.call_lua("CSurf_OnTempoChange", [bpm])
         if not result.get("ok"):
             raise Exception("Failed to set tempo")
         

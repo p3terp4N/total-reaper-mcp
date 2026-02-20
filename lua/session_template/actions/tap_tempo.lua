@@ -31,7 +31,7 @@ if last_tap and (now - last_tap) < TAP_TIMEOUT and (now - last_tap) > 0 then
     -- Round to 1 decimal place for cleanliness
     bpm = math.floor(bpm * 10 + 0.5) / 10
 
-    reaper.SetCurrentBPM(0, bpm, true)
+    reaper.CSurf_OnTempoChange(bpm)
     utils.log("Tap tempo: " .. bpm .. " BPM (interval: " .. string.format("%.3f", interval) .. "s)")
 else
     utils.log("Tap tempo: first tap registered. Tap again within " .. TAP_TIMEOUT .. "s.")

@@ -317,21 +317,20 @@ class TestTransport:
         result_stop = await call("Stop")
         assert result_stop["ok"]
 
-    @pytest.mark.xfail(reason="SetTempo uses SetTempoTimeSigMarker which adds a marker instead of changing master tempo")
     async def test_tempo_roundtrip(self):
-        """SetTempo then GetTempo should reflect the new BPM."""
+        """CSurf_OnTempoChange then GetTempo should reflect the new BPM."""
         original = await call("GetTempo")
         assert original["ok"]
         original_bpm = original["ret"]
 
-        await call("SetTempo", [140])
+        await call("CSurf_OnTempoChange", [140])
 
         result = await call("GetTempo")
         assert result["ok"]
         assert abs(result["ret"] - 140) < 0.1
 
         # Restore the original tempo.
-        await call("SetTempo", [original_bpm])
+        await call("CSurf_OnTempoChange", [original_bpm])
 
     async def test_get_time_signature(self):
         """GetTimeSignature should succeed."""

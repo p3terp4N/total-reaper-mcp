@@ -266,7 +266,6 @@ class TestMarkerActions:
 class TestTempoActions:
     """Test actions that affect tempo and playback rate."""
 
-    @pytest.mark.xfail(reason="SetTempo bridge function has a known bug; tap_tempo cannot reliably set tempo")
     async def test_tap_tempo_changes_tempo(self):
         """Tapping tempo twice within 3 seconds should change the project tempo."""
         original_tempo = await get_tempo()

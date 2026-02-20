@@ -34,34 +34,30 @@ async def get_project_tempo() -> str:
 
 async def set_project_tempo(tempo: float, position: Optional[float] = None) -> str:
     """Set project tempo at position (or edit cursor if not specified)"""
-    # Get position
-    if position is None:
-        cursor_result = await bridge.call_lua("GetCursorPosition", [])
-        if not cursor_result.get("ok"):
-            raise Exception("Failed to get cursor position")
-        position = cursor_result.get("ret", 0.0)
-    
-    # Set tempo using tempo/time signature marker
-    result = await bridge.call_lua("SetTempoTimeSigMarker", [
-        0,      # project
-        -1,     # marker index (-1 = insert new)
-        position,
-        -1,     # measure position (calculate automatically)
-        0.0,    # beat position
-        tempo,
-        0,      # timesig_num (0 = don't change)
-        0,      # timesig_denom (0 = don't change)
-        True    # lineartempo
-    ])
-    
-    if result.get("ok"):
-        success = result.get("ret", False)
-        if success:
+    if position is not None and position > 0:
+        # Position-specific tempo change: use tempo marker
+        result = await bridge.call_lua("SetTempoTimeSigMarker", [
+            0,      # project
+            -1,     # marker index (-1 = insert new)
+            position,
+            -1,     # measure position (calculate automatically)
+            0.0,    # beat position
+            tempo,
+            0,      # timesig_num (0 = don't change)
+            0,      # timesig_denom (0 = don't change)
+            True    # lineartempo
+        ])
+        if result.get("ok"):
             return f"Set tempo to {tempo:.2f} BPM at {position:.3f} seconds"
         else:
-            return "Failed to set tempo"
+            raise Exception(f"Failed to set tempo: {result.get('error', 'Unknown error')}")
     else:
-        raise Exception(f"Failed to set tempo: {result.get('error', 'Unknown error')}")
+        # Set master project tempo
+        result = await bridge.call_lua("CSurf_OnTempoChange", [tempo])
+        if result.get("ok"):
+            return f"Set tempo to {tempo:.2f} BPM"
+        else:
+            raise Exception(f"Failed to set tempo: {result.get('error', 'Unknown error')}")
 
 
 async def get_tempo_at_time(time: float) -> str:
