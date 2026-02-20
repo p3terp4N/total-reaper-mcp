@@ -886,6 +886,9 @@ local function GenerateBackingTrack(chart_json, instruments, style)
     local old_path = package.path
     package.path = session_template_path .. "lib/?.lua;" .. session_template_path .. "lib/backing/?.lua;" .. package.path
 
+    -- Clear cached modules so tracks._insert_pos resets to current track count
+    clear_module_cache()
+
     local ok_gen, generators_mod = pcall(require, "generators")
 
     if not ok_gen then
