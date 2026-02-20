@@ -318,19 +318,26 @@ class TestTransport:
         assert result_stop["ok"]
 
     async def test_tempo_roundtrip(self):
-        """SetTempoTimeSigMarker(marker 0) then GetTempo should reflect the new BPM."""
+        """DSL SetTempo then GetTempo should reflect the new BPM."""
         original = await call("GetTempo")
         assert original["ok"]
         original_bpm = original["ret"]
 
-        await call("SetTempoTimeSigMarker", [0, 0, 0, -1, -1, 140, 0, 0, False])
+        # Ensure a tempo marker exists (may have been deleted by other test fixtures).
+        count_result = await call("CountTempoTimeSigMarkers", [0])
+        if count_result.get("ok") and count_result.get("ret", 0) == 0:
+            await call("SetTempoTimeSigMarker",
+                        [0, -1, 0, -1, -1, original_bpm, 0, 0, False])
+
+        result = await call("SetTempo", [140])
+        assert result["ok"]
 
         result = await call("GetTempo")
         assert result["ok"]
         assert abs(result["ret"] - 140) < 0.1
 
         # Restore the original tempo.
-        await call("SetTempoTimeSigMarker", [0, 0, 0, -1, -1, original_bpm, 0, 0, False])
+        await call("SetTempo", [original_bpm])
 
     async def test_get_time_signature(self):
         """GetTimeSignature should succeed."""

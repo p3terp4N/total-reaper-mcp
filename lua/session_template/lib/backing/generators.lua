@@ -250,8 +250,13 @@ function generators.build(chart, instruments, style)
     local bpm = chart.bpm or 120
     local total_seconds = total_beats / bpm * 60
 
-    -- Set project tempo
-    reaper.CSurf_OnTempoChange(bpm)
+    -- Set project tempo via tempo marker (CSurf_OnTempoChange doesn't persist in defer loop)
+    local count = reaper.CountTempoTimeSigMarkers(0)
+    if count > 0 then
+        reaper.SetTempoTimeSigMarker(0, 0, 0, -1, -1, bpm, 0, 0, false)
+    else
+        reaper.SetTempoTimeSigMarker(0, -1, 0, -1, -1, bpm, 0, 0, false)
+    end
 
     -- Create folder track for all backing instruments
     local folder = tracks.create_folder({

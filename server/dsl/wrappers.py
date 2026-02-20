@@ -572,10 +572,8 @@ async def transport_set_tempo(bridge, bpm: float) -> OperationResult:
         result = await bridge.call_lua("GetTempo", [])
         old_tempo = result.get("ret", 120.0) if result.get("ok") else 120.0
         
-        # Set new tempo by modifying tempo marker 0 (always exists).
-        # CSurf_OnTempoChange only lasts one defer cycle.
-        result = await bridge.call_lua("SetTempoTimeSigMarker",
-                                       [0, 0, 0, -1, -1, bpm, 0, 0, False])
+        # Use DSL SetTempo which handles marker creation/modification
+        result = await bridge.call_lua("SetTempo", [bpm])
         if not result.get("ok"):
             raise Exception("Failed to set tempo")
         
