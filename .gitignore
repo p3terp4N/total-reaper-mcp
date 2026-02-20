@@ -73,3 +73,6 @@ coverage.xml
 
 # Firecrawl scrape cache
 .firecrawl/
+
+# Git worktrees
+.worktrees/
