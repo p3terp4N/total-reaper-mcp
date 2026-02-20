@@ -9,7 +9,9 @@ local project = {}
 --- Set project BPM.
 -- @param bpm number Tempo in BPM
 function project.set_bpm(bpm)
-    reaper.CSurf_OnTempoChange(bpm)
+    -- Modify the first tempo marker (index 0) which always exists.
+    -- CSurf_OnTempoChange only lasts one defer cycle — markers override it.
+    reaper.SetTempoTimeSigMarker(0, 0, 0, -1, -1, bpm, 0, 0, false)
 end
 
 --- Set project time signature.

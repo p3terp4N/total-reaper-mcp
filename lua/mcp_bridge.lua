@@ -671,7 +671,10 @@ local function GetTempo()
 end
 
 local function SetTempo(bpm)
-    reaper.CSurf_OnTempoChange(bpm)
+    -- Modify tempo marker 0 (always exists). CSurf_OnTempoChange only
+    -- lasts one defer cycle — tempo markers override it back.
+    reaper.SetTempoTimeSigMarker(0, 0, 0, -1, -1, bpm, 0, 0, false)
+    reaper.UpdateTimeline()
     local new_tempo = reaper.Master_GetTempo()
     return {ok = true, ret = new_tempo}
 end
@@ -787,12 +790,6 @@ end
 local function CreateSession(session_type, session_name, bpm, time_sig, key, sample_rate)
     -- Clear cached modules so require() picks up latest code
     clear_module_cache()
-
-    -- Remove all tempo/time-sig markers from previous sessions
-    local num_markers = reaper.CountTempoTimeSigMarkers(0)
-    for i = num_markers - 1, 0, -1 do
-        reaper.DeleteTempoTimeSigMarker(0, i)
-    end
 
     -- Load and execute a session template
     local old_path = package.path
