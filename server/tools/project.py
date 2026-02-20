@@ -199,8 +199,8 @@ async def set_project_tempo(tempo: float, position: Optional[float] = None) -> s
         # Position-specific tempo change: add new tempo marker
         result = await bridge.call_lua("SetTempoTimeSigMarker", [0, -1, position, -1, -1, tempo, 0, 0, True])
     else:
-        # Set master project tempo by modifying marker 0
-        result = await bridge.call_lua("SetTempoTimeSigMarker", [0, 0, 0, -1, -1, tempo, 0, 0, False])
+        # Use DSL SetTempo which handles marker creation/modification
+        result = await bridge.call_lua("SetTempo", [tempo])
 
     if result.get("ok"):
         return f"Set project tempo to {tempo:.2f} BPM"

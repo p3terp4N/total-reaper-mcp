@@ -640,7 +640,6 @@ class TestCrossTemplate:
             f"Template '{template_key}': expected {bpm} BPM, got {tempo}"
         )
 
-    @pytest.mark.xfail(reason="Redundant with test_create_session_succeeds; timeouts after prolonged VSTi loading")
     @pytest.mark.parametrize("template_key", ALL_TEMPLATE_KEYS)
     async def test_no_tracks_before_create(self, template_key: str):
         """After cleanup, there should be 0 tracks before template creation."""

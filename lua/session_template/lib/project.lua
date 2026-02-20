@@ -25,9 +25,13 @@ end
 -- @param num number Numerator (e.g., 4)
 -- @param denom number Denominator (e.g., 4)
 function project.set_time_sig(num, denom)
-    -- Set via the initial tempo/time sig marker
     local bpm = reaper.Master_GetTempo()
-    reaper.SetTempoTimeSigMarker(0, -1, -1, -1, -1, bpm, num, denom, false)
+    local count = reaper.CountTempoTimeSigMarkers(0)
+    if count > 0 then
+        reaper.SetTempoTimeSigMarker(0, 0, 0, -1, -1, bpm, num, denom, false)
+    else
+        reaper.SetTempoTimeSigMarker(0, -1, 0, -1, -1, bpm, num, denom, false)
+    end
 end
 
 --- Set project grid division and snap.

@@ -31,7 +31,13 @@ if last_tap and (now - last_tap) < TAP_TIMEOUT and (now - last_tap) > 0 then
     -- Round to 1 decimal place for cleanliness
     bpm = math.floor(bpm * 10 + 0.5) / 10
 
-    reaper.CSurf_OnTempoChange(bpm)
+    -- Set via tempo marker (CSurf_OnTempoChange doesn't persist with markers present)
+    local marker_count = reaper.CountTempoTimeSigMarkers(0)
+    if marker_count > 0 then
+        reaper.SetTempoTimeSigMarker(0, 0, 0, -1, -1, bpm, 0, 0, false)
+    else
+        reaper.SetTempoTimeSigMarker(0, -1, 0, -1, -1, bpm, 0, 0, false)
+    end
     utils.log("Tap tempo: " .. bpm .. " BPM (interval: " .. string.format("%.3f", interval) .. "s)")
 else
     utils.log("Tap tempo: first tap registered. Tap again within " .. TAP_TIMEOUT .. "s.")
