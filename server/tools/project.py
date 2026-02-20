@@ -195,13 +195,13 @@ async def get_project_tempo() -> str:
 
 async def set_project_tempo(tempo: float, position: Optional[float] = None) -> str:
     """Set the project tempo in BPM"""
-    # If position is not specified, use current cursor position
-    if position is None:
-        pos_result = await bridge.call_lua("GetCursorPosition", [])
-        position = pos_result.get("ret", 0.0) if pos_result.get("ok") else 0.0
-    
-    result = await bridge.call_lua("SetTempoTimeSigMarker", [0, -1, position, -1, -1, tempo, 0, 0, True])
-    
+    if position is not None and position > 0:
+        # Position-specific tempo change: use tempo marker
+        result = await bridge.call_lua("SetTempoTimeSigMarker", [0, -1, position, -1, -1, tempo, 0, 0, True])
+    else:
+        # Set master project tempo
+        result = await bridge.call_lua("CSurf_OnTempoChange", [tempo])
+
     if result.get("ok"):
         return f"Set project tempo to {tempo:.2f} BPM"
     else:

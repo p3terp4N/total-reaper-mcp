@@ -671,8 +671,9 @@ local function GetTempo()
 end
 
 local function SetTempo(bpm)
-    reaper.SetTempoTimeSigMarker(0, -1, -1, -1, -1, bpm, 0, 0, false)
-    return {ok = true}
+    reaper.CSurf_OnTempoChange(bpm)
+    local new_tempo = reaper.Master_GetTempo()
+    return {ok = true, ret = new_tempo}
 end
 
 local function GetTimeSignature()

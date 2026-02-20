@@ -239,7 +239,6 @@ async def test_template_track_names(template_key: str):
     assert_track_names_contain(track_names, spec["required_patterns"])
 
 
-@pytest.mark.xfail(reason="SetTempo uses SetTempoTimeSigMarker which doesn't change master tempo")
 @pytest.mark.parametrize("template_key", ALL_TEMPLATE_KEYS)
 async def test_template_sets_tempo(template_key: str):
     """Each template applies the requested tempo (120 BPM)."""
@@ -608,7 +607,6 @@ class TestTranscriptionTemplate:
 class TestCrossTemplate:
     """Tests that apply across multiple templates."""
 
-    @pytest.mark.xfail(reason="SetTempo uses SetTempoTimeSigMarker which doesn't change master tempo")
     @pytest.mark.parametrize("template_key", ALL_TEMPLATE_KEYS)
     async def test_custom_bpm_applied(self, template_key: str):
         """Each template should respect the BPM parameter."""
