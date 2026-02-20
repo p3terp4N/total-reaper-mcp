@@ -675,7 +675,6 @@ class TestSessionSupport:
         result = await call("GetSessionConfig", ["all"])
         assert result["ok"]
 
-    @pytest.mark.xfail(reason="ScanPlugins takes >15s, exceeds bridge timeout")
     async def test_scan_plugins(self):
         """ScanPlugins succeeds (may take a moment)."""
         result = await call("ScanPlugins")
@@ -796,7 +795,6 @@ class TestErrorHandling:
 class TestRunSessionAction:
     """RunSessionAction dispatches named REAPER actions."""
 
-    @pytest.mark.xfail(reason="tap_tempo may exceed bridge timeout")
     async def test_tap_tempo_action(self):
         """RunSessionAction with 'tap_tempo' should succeed."""
         result = await call("RunSessionAction", ["tap_tempo"])

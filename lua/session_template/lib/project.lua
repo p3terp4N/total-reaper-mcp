@@ -9,7 +9,7 @@ local project = {}
 --- Set project BPM.
 -- @param bpm number Tempo in BPM
 function project.set_bpm(bpm)
-    reaper.SetTempoTimeSigMarker(0, -1, -1, -1, -1, bpm, 0, 0, false)
+    reaper.CSurf_OnTempoChange(bpm)
 end
 
 --- Set project time signature.
