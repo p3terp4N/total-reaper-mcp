@@ -1045,6 +1045,384 @@ local function RegeneratePart(instrument, style, genre_override)
     return {ok = true, ret = {genre = new_style, notes = notes_inserted}}
 end
 
+-- ============================================================================
+-- Neural DSP Plugin Commands
+-- ============================================================================
+
+-- Patterns that identify Neural DSP plugins in FX name strings
+local NEURAL_DSP_PATTERNS = {
+    "neural dsp",
+    "archetype:",
+    "darkglass",
+    "parallax",
+    "soldano",
+    "nameless",
+    "fortin",
+    "omega",
+    "cali",
+    "plini",
+    "abasi",
+    "nolly",
+    "gojira",
+    "petrucci",
+    "rabea",
+    "tim henson",
+    "tom morello",
+    "corey wong",
+    "john petrucci",
+    "mark lettieri",
+    "morgan wade",
+}
+
+local function is_neural_dsp(fx_name)
+    local lower = string.lower(fx_name)
+    for _, pattern in ipairs(NEURAL_DSP_PATTERNS) do
+        if string.find(lower, pattern, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local function fuzzy_match_param(target, candidate)
+    local t = string.lower(target)
+    local c = string.lower(candidate)
+    -- Exact match
+    if t == c then return 100 end
+    -- Candidate contains target
+    if string.find(c, t, 1, true) then return 80 end
+    -- Target contains candidate
+    if string.find(t, c, 1, true) then return 60 end
+    return 0
+end
+
+-- Find all Neural DSP plugins across all tracks
+local function NeuralDSP_FindPlugins()
+    local results = {}
+    local track_count = reaper.CountTracks(0)
+
+    for ti = 0, track_count - 1 do
+        local track = reaper.GetTrack(0, ti)
+        local fx_count = reaper.TrackFX_GetCount(track)
+        for fi = 0, fx_count - 1 do
+            local retval, fx_name = reaper.TrackFX_GetFXName(track, fi, "")
+            if retval and is_neural_dsp(fx_name) then
+                local _, track_name = reaper.GetSetMediaTrackInfo_String(track, "P_NAME", "", false)
+                local enabled = reaper.TrackFX_GetEnabled(track, fi)
+                table.insert(results, {
+                    track_idx = ti,
+                    track_name = track_name,
+                    fx_idx = fi,
+                    fx_name = fx_name,
+                    enabled = enabled,
+                })
+            end
+        end
+    end
+
+    return {ok = true, ret = results}
+end
+
+-- Get all parameters for a Neural DSP plugin instance
+local function NeuralDSP_GetParams(track_idx, fx_idx)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+
+    local fx_count = reaper.TrackFX_GetCount(track)
+    if fx_idx < 0 or fx_idx >= fx_count then
+        return {ok = false, error = "FX index " .. tostring(fx_idx) .. " out of range (0-" .. tostring(fx_count - 1) .. ")"}
+    end
+
+    local _, fx_name = reaper.TrackFX_GetFXName(track, fx_idx, "")
+    local num_params = reaper.TrackFX_GetNumParams(track, fx_idx)
+    local params = {}
+
+    for pi = 0, num_params - 1 do
+        local _, pname = reaper.TrackFX_GetParamName(track, fx_idx, pi, "")
+        local value, minval, maxval = reaper.TrackFX_GetParam(track, fx_idx, pi)
+        table.insert(params, {
+            idx = pi,
+            name = pname,
+            value = value,
+            min = minval,
+            max = maxval,
+        })
+    end
+
+    return {ok = true, ret = {fx_name = fx_name, param_count = num_params, params = params}}
+end
+
+-- Get a parameter by fuzzy name match
+local function NeuralDSP_GetParamByName(track_idx, fx_idx, param_name)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+    if not param_name or param_name == "" then
+        return {ok = false, error = "param_name is required"}
+    end
+
+    local num_params = reaper.TrackFX_GetNumParams(track, fx_idx)
+    local best_score = 0
+    local best_idx = -1
+    local best_name = ""
+
+    for pi = 0, num_params - 1 do
+        local _, pname = reaper.TrackFX_GetParamName(track, fx_idx, pi, "")
+        local score = fuzzy_match_param(param_name, pname)
+        if score > best_score then
+            best_score = score
+            best_idx = pi
+            best_name = pname
+        end
+    end
+
+    if best_idx < 0 then
+        return {ok = false, error = "No parameter matching '" .. param_name .. "'"}
+    end
+
+    local value, minval, maxval = reaper.TrackFX_GetParam(track, fx_idx, best_idx)
+    return {ok = true, ret = {
+        idx = best_idx,
+        name = best_name,
+        value = value,
+        min = minval,
+        max = maxval,
+        match_score = best_score,
+    }}
+end
+
+-- Set a parameter by fuzzy name match
+local function NeuralDSP_SetParamByName(track_idx, fx_idx, param_name, value)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+    if not param_name or param_name == "" then
+        return {ok = false, error = "param_name is required"}
+    end
+    if value == nil then
+        return {ok = false, error = "value is required"}
+    end
+
+    local num_params = reaper.TrackFX_GetNumParams(track, fx_idx)
+    local best_score = 0
+    local best_idx = -1
+    local best_name = ""
+
+    for pi = 0, num_params - 1 do
+        local _, pname = reaper.TrackFX_GetParamName(track, fx_idx, pi, "")
+        local score = fuzzy_match_param(param_name, pname)
+        if score > best_score then
+            best_score = score
+            best_idx = pi
+            best_name = pname
+        end
+    end
+
+    if best_idx < 0 then
+        return {ok = false, error = "No parameter matching '" .. param_name .. "'"}
+    end
+
+    local old_value = reaper.TrackFX_GetParam(track, fx_idx, best_idx)
+    reaper.TrackFX_SetParam(track, fx_idx, best_idx, value)
+    local new_value = reaper.TrackFX_GetParam(track, fx_idx, best_idx)
+
+    return {ok = true, ret = {
+        idx = best_idx,
+        name = best_name,
+        old_value = old_value,
+        new_value = new_value,
+        match_score = best_score,
+    }}
+end
+
+-- Get current preset name
+local function NeuralDSP_GetPreset(track_idx, fx_idx)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+
+    local retval, preset_name = reaper.TrackFX_GetPreset(track, fx_idx, "")
+    local _, fx_name = reaper.TrackFX_GetFXName(track, fx_idx, "")
+
+    return {ok = true, ret = {
+        fx_name = fx_name,
+        preset_name = retval and preset_name or "(no preset)",
+        has_preset = retval,
+    }}
+end
+
+-- Set preset by name
+local function NeuralDSP_SetPreset(track_idx, fx_idx, preset_name)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+    if not preset_name or preset_name == "" then
+        return {ok = false, error = "preset_name is required"}
+    end
+
+    local success = reaper.TrackFX_SetPreset(track, fx_idx, preset_name)
+    if not success then
+        return {ok = false, error = "Preset '" .. preset_name .. "' not found"}
+    end
+
+    local _, confirmed = reaper.TrackFX_GetPreset(track, fx_idx, "")
+    return {ok = true, ret = {preset_name = confirmed}}
+end
+
+-- Snapshot all parameter values for A/B comparison
+local function NeuralDSP_Snapshot(track_idx, fx_idx)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+
+    local _, fx_name = reaper.TrackFX_GetFXName(track, fx_idx, "")
+    local num_params = reaper.TrackFX_GetNumParams(track, fx_idx)
+    local snapshot = {}
+
+    for pi = 0, num_params - 1 do
+        local _, pname = reaper.TrackFX_GetParamName(track, fx_idx, pi, "")
+        local value = reaper.TrackFX_GetParam(track, fx_idx, pi)
+        snapshot[tostring(pi)] = {name = pname, value = value}
+    end
+
+    local retval, preset_name = reaper.TrackFX_GetPreset(track, fx_idx, "")
+
+    return {ok = true, ret = {
+        fx_name = fx_name,
+        preset_name = retval and preset_name or "(no preset)",
+        param_count = num_params,
+        snapshot = snapshot,
+    }}
+end
+
+-- Restore a snapshot
+local function NeuralDSP_RestoreSnapshot(track_idx, fx_idx, snapshot)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+    if not snapshot then
+        return {ok = false, error = "snapshot data is required"}
+    end
+
+    local restored = 0
+    for pi_str, data in pairs(snapshot) do
+        local pi = tonumber(pi_str)
+        if pi and data.value then
+            reaper.TrackFX_SetParam(track, fx_idx, pi, data.value)
+            restored = restored + 1
+        end
+    end
+
+    return {ok = true, ret = {params_restored = restored}}
+end
+
+-- Get signal chain — identify bypass/enable parameters
+local function NeuralDSP_GetSignalChain(track_idx, fx_idx)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+
+    local _, fx_name = reaper.TrackFX_GetFXName(track, fx_idx, "")
+    local num_params = reaper.TrackFX_GetNumParams(track, fx_idx)
+    local blocks = {}
+    local bypass_keywords = {"bypass", "enable", "on/off", "active", "power", "engaged"}
+
+    for pi = 0, num_params - 1 do
+        local _, pname = reaper.TrackFX_GetParamName(track, fx_idx, pi, "")
+        local value, minval, maxval = reaper.TrackFX_GetParam(track, fx_idx, pi)
+        local lower = string.lower(pname)
+
+        local is_toggle = false
+        for _, kw in ipairs(bypass_keywords) do
+            if string.find(lower, kw, 1, true) then
+                is_toggle = true
+                break
+            end
+        end
+
+        if is_toggle then
+            table.insert(blocks, {
+                idx = pi,
+                name = pname,
+                value = value,
+                enabled = value > 0.5,
+            })
+        end
+    end
+
+    -- Also include the overall FX bypass state
+    local fx_enabled = reaper.TrackFX_GetEnabled(track, fx_idx)
+
+    return {ok = true, ret = {
+        fx_name = fx_name,
+        fx_enabled = fx_enabled,
+        blocks = blocks,
+    }}
+end
+
+-- Toggle a signal chain block by name
+local function NeuralDSP_ToggleBlock(track_idx, fx_idx, block_name)
+    local track = reaper.GetTrack(0, track_idx)
+    if not track then
+        return {ok = false, error = "Track not found at index " .. tostring(track_idx)}
+    end
+    if not block_name or block_name == "" then
+        return {ok = false, error = "block_name is required"}
+    end
+
+    local num_params = reaper.TrackFX_GetNumParams(track, fx_idx)
+    local best_score = 0
+    local best_idx = -1
+    local best_name = ""
+
+    -- Special case: "plugin" or "fx" toggles the overall FX bypass
+    local lower_block = string.lower(block_name)
+    if lower_block == "plugin" or lower_block == "fx" or lower_block == "bypass" then
+        local current = reaper.TrackFX_GetEnabled(track, fx_idx)
+        reaper.TrackFX_SetEnabled(track, fx_idx, not current)
+        return {ok = true, ret = {
+            name = "Plugin Bypass",
+            was_enabled = current,
+            now_enabled = not current,
+        }}
+    end
+
+    for pi = 0, num_params - 1 do
+        local _, pname = reaper.TrackFX_GetParamName(track, fx_idx, pi, "")
+        local score = fuzzy_match_param(block_name, pname)
+        if score > best_score then
+            best_score = score
+            best_idx = pi
+            best_name = pname
+        end
+    end
+
+    if best_idx < 0 then
+        return {ok = false, error = "No block matching '" .. block_name .. "'"}
+    end
+
+    local current_value = reaper.TrackFX_GetParam(track, fx_idx, best_idx)
+    local new_value = current_value > 0.5 and 0.0 or 1.0
+    reaper.TrackFX_SetParam(track, fx_idx, best_idx, new_value)
+
+    return {ok = true, ret = {
+        idx = best_idx,
+        name = best_name,
+        was_enabled = current_value > 0.5,
+        now_enabled = new_value > 0.5,
+        match_score = best_score,
+    }}
+end
+
 -- Export function table for DSL
 DSL_FUNCTIONS = {
     -- Track info
@@ -1098,6 +1476,18 @@ DSL_FUNCTIONS = {
     -- Backing Tracks
     GenerateBackingTrack = GenerateBackingTrack,
     RegeneratePart = RegeneratePart,
+
+    -- Neural DSP
+    NeuralDSP_FindPlugins = NeuralDSP_FindPlugins,
+    NeuralDSP_GetParams = NeuralDSP_GetParams,
+    NeuralDSP_GetParamByName = NeuralDSP_GetParamByName,
+    NeuralDSP_SetParamByName = NeuralDSP_SetParamByName,
+    NeuralDSP_GetPreset = NeuralDSP_GetPreset,
+    NeuralDSP_SetPreset = NeuralDSP_SetPreset,
+    NeuralDSP_Snapshot = NeuralDSP_Snapshot,
+    NeuralDSP_RestoreSnapshot = NeuralDSP_RestoreSnapshot,
+    NeuralDSP_GetSignalChain = NeuralDSP_GetSignalChain,
+    NeuralDSP_ToggleBlock = NeuralDSP_ToggleBlock,
 
     -- Compound envelope operations (avoids userdata crossing bridge)
     InsertEnvelopePointByName = function(track_index, envelope_name, time, value, shape, tension, selected, no_sort)

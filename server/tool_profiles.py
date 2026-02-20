@@ -84,7 +84,8 @@ TOOL_PROFILES = {
             "DSL",
             "Advanced MIDI Generation",  # For external MIDI generation
             "FX",  # For adding instruments
-            "Rendering & Freezing"  # For bouncing
+            "Rendering & Freezing",  # For bouncing
+            "Neural DSP",  # Neural DSP plugin control
         ]
     },
     "session-template": {
@@ -102,6 +103,7 @@ TOOL_PROFILES = {
             "Markers",
             "Transport",
             "Project",
+            "Neural DSP",
         ]
     },
     "backing-track": {
