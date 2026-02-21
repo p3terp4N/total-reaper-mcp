@@ -87,6 +87,7 @@ STATIC_CONFIG = {
         },
         "sample_rates": [44100, 48000],
         "bit_depth": 24,
+        "midi_note": "Tascam Model 12 is transmit-only on MIDI. It sends MCU/HUI over USB but does NOT respond to incoming MIDI on DIN ports.",
     },
     "midi": {
         "devices": {
