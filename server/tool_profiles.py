@@ -43,11 +43,12 @@ TOOL_PROFILES = {
         "description": "Tools for MIDI-focused workflows",
         "categories": [
             "Tracks",
-            "Transport", 
+            "Transport",
             "MIDI",
             "MIDI Editor & Piano Roll",
             "Advanced MIDI Analysis & Generation",
             "Advanced MIDI Generation",
+            "MIDI Production",
             "Time Selection",
             "Tempo & Time Signature",
         ]
@@ -63,6 +64,7 @@ TOOL_PROFILES = {
             "Bus Routing & Mixing Workflows",
             "Automation & Envelopes",
             "Rendering & Freezing",
+            "Render & Export",
         ]
     },
     "full": {
@@ -87,6 +89,9 @@ TOOL_PROFILES = {
             "Rendering & Freezing",  # For bouncing
             "Neural DSP",  # Neural DSP plugin control
             "Production Workflow",  # Arrangement templates, social clips, form analysis
+            "Render & Export",  # Format-aware rendering, social clips
+            "MIDI Production",  # Batch MIDI insertion, scale lock, genre drums
+            "Arrangement",  # Arrangement templates, form analysis
         ]
     },
     "session-template": {

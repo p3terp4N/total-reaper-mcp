@@ -102,6 +102,8 @@ Scrapes chord charts from Ultimate Guitar, parses into normalized SongChart, gen
 - Lua pattern libraries return `{pitch, start_beats, length_beats, velocity}` per bar
 - Config source of truth: `lua/session_template/lib/config.lua`
 - Python static fallback: `server/session_config.py`
+- **Tempo**: NEVER use `CSurf_OnTempoChange` — doesn't persist in defer loop. Use `SetTempoTimeSigMarker` with marker count check (modify marker 0 if exists, create with ptidx=-1 if not)
+- Bridge top-level DSL functions only reload on REAPER restart. Lua modules reload via `clear_module_cache()`
 
 ## Git
 
