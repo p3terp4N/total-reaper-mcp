@@ -86,6 +86,7 @@ TOOL_PROFILES = {
             "FX",  # For adding instruments
             "Rendering & Freezing",  # For bouncing
             "Neural DSP",  # Neural DSP plugin control
+            "Production Workflow",  # Arrangement templates, social clips, form analysis
         ]
     },
     "session-template": {
