@@ -12,10 +12,10 @@ MCP server that exposes REAPER DAW functionality through Claude. Fork of [shiehn
 server/                     # Python MCP server
   app.py                    # Entry point, profile selection, CATEGORY_REGISTRY
   bridge.py                 # File-based IPC bridge to REAPER
-  tool_profiles.py          # Profile definitions (10 profiles)
+  tool_profiles.py          # Profile definitions (10 profiles, including dsl-production default)
   session_config.py         # Hardware/plugin config (static fallback)
   song_lookup.py            # Chord chart scraping + parsing
-  tools/                    # MCP tool modules (38 categories)
+  tools/                    # MCP tool modules (50 categories)
   dsl/                      # Natural language wrappers
 lua/
   mcp_bridge.lua            # Single bridge script for ALL profiles
@@ -76,10 +76,16 @@ Start with: `python -m server.app --profile <name>`
 
 | Profile | Purpose |
 |---------|---------|
-| `dsl-production` | **Default.** DSL + essential tools |
-| `session-template` | Session creation with hardware routing |
+| `dsl-production` | **Default.** DSL + essential tools + production workflow, render/export, MIDI production, arrangement |
+| `session-template` | Session creation with hardware-specific routing |
 | `backing-track` | Backing track generation from chord charts |
+| `midi-production` | MIDI-focused workflows (editor, advanced MIDI, production) |
+| `mixing` | Mixing and mastering (FX, routing, bus workflows, render) |
 | `full` | All 700+ tools |
+| `minimal` | Bare minimum (tracks, transport, project) |
+| `dsl` | DSL tools only |
+| `groq-essential` | Core REAPER for Groq (max 128 tools) |
+| `groq-extended` | Extended Groq profile |
 
 ## Session Templates (9 types)
 
@@ -94,6 +100,20 @@ Scrapes chord charts from Ultimate Guitar, parses into normalized SongChart, gen
 **Data flow:** `lookup_song()` → search UG → scrape chords → `parse_chord_chart()` → bridge `GenerateBackingTrack` → Lua `generators.build()` → REAPER tracks with VSTi + MIDI.
 
 `regenerate_part()` re-generates a single instrument via `RegeneratePart` bridge function. Chart data is stored in REAPER project extended state (`MCP_BackingTrack` section) after initial generation.
+
+## New Tool Categories (added post-fork)
+
+These categories extend the original upstream toolset:
+
+- **Production Workflow** (`production_workflow.py`): Arrangement templates, social media clip export, form analysis
+- **Render & Export** (`render_export.py`): Format-aware rendering, stem export, social clip dimensions
+- **MIDI Production** (`midi_production.py`): Batch MIDI insertion, scale lock, genre-specific drum patterns
+- **Arrangement** (`arrangement.py`): Song structure templates, section management, form analysis
+- **Neural DSP** (`neural_dsp.py`): Quad Cortex plugin parameter control within REAPER
+- **Advanced MIDI Generation** (`advanced_midi_generation.py`): Algorithmic MIDI generation
+- **Groove & Quantization** (`groove_quantization.py`): Groove templates, swing, humanize
+- **Bus Routing & Mixing** (`bus_routing.py`): Bus creation, mixing workflows, routing helpers
+- **Bounce & Render** (`bounce_render.py`): Bounce-in-place, render queue, freeze operations
 
 ## Conventions
 
